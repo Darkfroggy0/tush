@@ -110,6 +110,7 @@ class InputListener(threading.Thread):
 # 🌐 AUTO UPDATE
 # =========================
 def check_update():
+    current_version = "1.0"
     url_version = "https://github.com/Darkfroggy0/tush/blob/main/version.txt"
     url_script = "https://github.com/Darkfroggy0/tush/blob/main/tush.py"
     current_version = "1.0"
