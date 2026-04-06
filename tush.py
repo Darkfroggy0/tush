@@ -111,7 +111,7 @@ class InputListener(threading.Thread):
 # =========================
 def check_update():
     url_version = "https://raw.githubusercontent.com/usuario/repositorio/main/version.txt"
-    url_script = "https://raw.githubusercontent.com/usuario/repositorio/main/tush.py"
+    url_script = "https://github.com/Darkfroggy0/tush/blob/main/tush.py"
     current_version = "1.0"
     try:
         r = requests.get(url_version, timeout=5)
