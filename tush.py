@@ -155,7 +155,7 @@ class UI(QWidget):
         self.listener.start()
         self.listening = False
         self.drag_pos = None
-        self.version = "v1.4"
+        self.version = "v1.5"
         self.init_ui()
 
     def init_ui(self):
