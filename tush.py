@@ -110,7 +110,7 @@ def auto_update():
     url_script = "https://raw.githubusercontent.com/Darkfroggy0/tush/main/tush.py"
 
     version_file = "version.txt"
-    current_version = "1.0"
+    current_version = "1.3"
     if os.path.exists(version_file):
         with open(version_file, "r") as f:
             current_version = f.read().strip()
