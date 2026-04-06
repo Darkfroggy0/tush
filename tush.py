@@ -109,22 +109,23 @@ class InputListener(threading.Thread):
 # =========================
 # 🌐 AUTO UPDATE
 # =========================
-def check_update():
-    current_version = "1.0"
+def auto_update():
     url_version = "https://raw.githubusercontent.com/Darkfroggy0/tush/main/version.txt"
-    url_script = "https://raw.githubusercontent.com/Darkfroggy0/tush/main/tush.py"
+    url_script  = "https://raw.githubusercontent.com/Darkfroggy0/tush/main/tush.py"
     current_version = "1.0"
     try:
         r = requests.get(url_version, timeout=5)
+        r.raise_for_status()
         latest_version = r.text.strip()
         if latest_version != current_version:
             r2 = requests.get(url_script)
+            r2.raise_for_status()
             with open(sys.argv[0], "wb") as f:
                 f.write(r2.content)
             # reinicia la app con la versión nueva
             os.execl(sys.executable, sys.executable, *sys.argv)
-    except:
-        pass
+    except Exception as e:
+        print(f"[Update error] {e}")
 
 # =========================
 # 🎨 UI (DRAGGABLE)
@@ -133,8 +134,8 @@ class UI(QWidget):
     def __init__(self):
         super().__init__()
 
-        # revisar updates
-        threading.Thread(target=check_update, daemon=True).start()
+        # revisar updates en hilo aparte
+        threading.Thread(target=auto_update, daemon=True).start()
 
         self.macro = Macro()
         self.listener = InputListener(self.macro)
