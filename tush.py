@@ -123,7 +123,7 @@ class ToggleListener(threading.Thread):
 def check_update():
     url_version = "https://raw.githubusercontent.com/usuario/repositorio/main/version.txt"
     url_script = "https://raw.githubusercontent.com/usuario/repositorio/main/tush.py"
-    current_version = "1.5"
+    current_version = "1.6"
     try:
         r = requests.get(url_version, timeout=5)
         if r.status_code != 200:
@@ -155,7 +155,7 @@ class UI(QWidget):
         self.listener.start()
         self.listening = False
         self.drag_pos = None
-        self.version = "v1.5"
+        self.version = "v1.6"
         self.init_ui()
 
     def init_ui(self):
