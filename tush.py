@@ -17,6 +17,7 @@ from PyQt5.QtGui import *
 # 🪟 WINDOWS API
 # =========================
 user32 = ctypes.WinDLL('user32', use_last_error=True)
+
 def get_window_title():
     hwnd = user32.GetForegroundWindow()
     length = user32.GetWindowTextLengthW(hwnd)
@@ -31,7 +32,7 @@ def is_roblox():
         return False
 
 # =========================
-# ⚡ MACRO ULTRA-PRECISO
+# ⚡ MACRO ENGINE
 # =========================
 class Macro:
     def __init__(self):
@@ -39,6 +40,7 @@ class Macro:
         self.hold_key = "f8"
         self.kps = 30
         self.active = False
+        self.lock = threading.Lock()
         threading.Thread(target=self.loop, daemon=True).start()
 
     def set_kps(self, kps):
@@ -60,20 +62,28 @@ class Macro:
             pass
 
     def loop(self):
-        interval = 1 / max(1, self.kps)
         while True:
-            if self.active and is_roblox():
-                start = time.perf_counter()
-                self.press()
-                elapsed = time.perf_counter() - start
-                remaining = interval - elapsed
-                if remaining > 0:
-                    time.sleep(min(remaining, 0.001))
-            else:
-                time.sleep(0.001)
+            try:
+                if not self.active or not is_roblox():
+                    time.sleep(0.002)
+                    continue
+
+                with self.lock:
+                    interval = 1 / self.kps
+                    start = time.perf_counter()
+                    self.press()
+                    elapsed = time.perf_counter() - start
+                    remaining = interval - elapsed
+                    while remaining > 0:
+                        if not self.active:
+                            break
+                        time.sleep(min(0.001, remaining))
+                        remaining -= 0.001
+            except:
+                time.sleep(0.01)
 
 # =========================
-# 🎮 INPUT LISTENER ULTRA-PRECISO
+# 🎮 INPUT LISTENER
 # =========================
 class InputListener(threading.Thread):
     def __init__(self, macro):
@@ -82,15 +92,15 @@ class InputListener(threading.Thread):
 
     def run(self):
         while True:
-            key = self.macro.hold_key
             try:
+                key = self.macro.hold_key
                 if key.startswith("mouse_"):
                     self.macro.active = mouse.is_pressed(button=key.split("_")[1])
                 else:
                     self.macro.active = keyboard.is_pressed(key)
             except:
                 self.macro.active = False
-            time.sleep(0.0005)  # Listener super rápido
+            time.sleep(0.001)
 
 # =========================
 # 🌐 AUTO UPDATE
@@ -98,19 +108,33 @@ class InputListener(threading.Thread):
 def auto_update():
     url_version = "https://raw.githubusercontent.com/Darkfroggy0/tush/main/version.txt"
     url_script = "https://raw.githubusercontent.com/Darkfroggy0/tush/main/tush.py"
-    current_version = "1.2"
+
+    version_file = "version.txt"
+    current_version = "1.0"
+    if os.path.exists(version_file):
+        with open(version_file, "r") as f:
+            current_version = f.read().strip()
+
     try:
         r = requests.get(url_version, timeout=5)
         latest_version = r.text.strip()
         if latest_version != current_version:
-            print("[UPDATE] Nueva versión encontrada. Actualizando...")
+            print(f"[UPDATE] Nueva versión {latest_version} encontrada. Actualizando...")
+
+            # descargar script
             r2 = requests.get(url_script)
             with open(sys.argv[0], "wb") as f:
                 f.write(r2.content)
+
+            with open(version_file, "w") as f:
+                f.write(latest_version)
+
             print("[UPDATE] Actualización completada. Reiniciando...")
             os.execl(sys.executable, sys.executable, *sys.argv)
-    except:
-        pass
+        else:
+            print(f"[UPDATE] Ya estás en la versión {current_version}")
+    except Exception as e:
+        print(f"[UPDATE] Error al revisar actualización: {e}")
 
 # =========================
 # 🎨 UI
@@ -118,18 +142,17 @@ def auto_update():
 class UI(QWidget):
     def __init__(self):
         super().__init__()
-        threading.Thread(target=auto_update, daemon=True).start()
         self.macro = Macro()
         self.listener = InputListener(self.macro)
         self.listener.start()
         self.listening = False
         self.drag_pos = None
+        self.version = "v1.2"  # ← aquí defines la versión que se muestra
         self.init_ui()
 
     def init_ui(self):
         self.setFixedSize(420, 460)
         self.setWindowFlags(Qt.FramelessWindowHint)
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(30, 25, 30, 25)
         layout.setSpacing(18)
@@ -143,11 +166,7 @@ class UI(QWidget):
         self.kps.textChanged.connect(self.update_kps)
 
         self.action = QComboBox()
-        self.action.addItems([
-            "f","e","space",
-            "mouse_left","mouse_right",
-            "mouse_middle","mouse_x","mouse_x2"
-        ])
+        self.action.addItems(["f","e","space","mouse_left","mouse_right","mouse_middle","mouse_x","mouse_x2"])
         self.action.currentTextChanged.connect(self.macro.set_action_key)
 
         self.hotkey = QPushButton("SET HOLD KEY")
@@ -155,13 +174,14 @@ class UI(QWidget):
 
         save_btn = QPushButton("Save Config")
         save_btn.clicked.connect(self.save_config)
-
         load_btn = QPushButton("Load Config")
         load_btn.clicked.connect(self.load_config)
-
         creator = QPushButton("CREADOR")
         creator.clicked.connect(lambda: webbrowser.open("https://guns.lol/2by"))
 
+        # =========================
+        # Layout principal
+        # =========================
         layout.addWidget(title)
         layout.addWidget(QLabel("KPS"))
         layout.addWidget(self.kps)
@@ -174,6 +194,14 @@ class UI(QWidget):
         layout.addStretch()
         layout.addWidget(creator)
 
+        # =========================
+        # Label versión
+        # =========================
+        version_label = QLabel(self.version)
+        version_label.setAlignment(Qt.AlignRight)
+        version_label.setStyleSheet("color: #888888; font-size:10px;")
+        layout.addWidget(version_label)
+
         self.setStyleSheet("""
         QWidget {
             background: #121212;
@@ -185,11 +213,9 @@ class UI(QWidget):
             border-radius: 10px;
             background: #1e1e1e;
         }
-        QPushButton:hover {
-            background: #2a2a2a;
-        }
+        QPushButton:hover { background: #2a2a2a; }
         """)
-
+    # DRAG
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
@@ -199,9 +225,9 @@ class UI(QWidget):
     def mouseReleaseEvent(self, event):
         self.drag_pos = None
 
+    # HOTKEY
     def set_hotkey(self):
-        if self.listening:
-            return
+        if self.listening: return
         self.listening = True
         self.hotkey.setText("PRESS KEY...")
         def detect():
@@ -221,6 +247,7 @@ class UI(QWidget):
         self.hotkey.setText(key.upper())
         self.listening = False
 
+    # CONFIG
     def save_config(self):
         path, _ = QFileDialog.getSaveFileName(self, "Guardar", "", "JSON (*.json)")
         if not path: return
@@ -231,9 +258,9 @@ class UI(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, "Cargar", "", "JSON (*.json)")
         if not path: return
         with open(path) as f: data = json.load(f)
-        self.kps.setText(str(data.get("kps",30)))
-        self.action.setCurrentText(data.get("action","f"))
-        hold = data.get("hold","f8")
+        self.kps.setText(str(data.get("kps", 30)))
+        self.action.setCurrentText(data.get("action", "f"))
+        hold = data.get("hold", "f8")
         self.macro.set_hold_key(hold)
         self.hotkey.setText(hold.upper())
 
@@ -245,6 +272,7 @@ class UI(QWidget):
 # 🚀 RUN
 # =========================
 if __name__ == "__main__":
+    auto_update()  # Se ejecuta **solo una vez al iniciar**
     app = QApplication(sys.argv)
     ui = UI()
     ui.setWindowOpacity(0)
