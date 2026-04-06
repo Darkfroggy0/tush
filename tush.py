@@ -13,9 +13,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-# =========================
-# 🪟 WINDOWS API
-# =========================
+
 user32 = ctypes.WinDLL('user32', use_last_error=True)
 
 def get_window_title():
@@ -31,9 +29,7 @@ def is_roblox():
     except:
         return False
 
-# =========================
-# ⚡ MACRO ENGINE
-# =========================
+
 class Macro:
     def __init__(self):
         self.action_key = "f"
@@ -84,9 +80,7 @@ class Macro:
             except:
                 time.sleep(0.01)
 
-# =========================
-# 🎮 TOGGLE LISTENER (CON COOLDOWN)
-# =========================
+
 class ToggleListener(threading.Thread):
     def __init__(self, macro):
         super().__init__(daemon=True)
@@ -117,9 +111,7 @@ class ToggleListener(threading.Thread):
             except:
                 pass
             time.sleep(0.01)
-# =========================
-# 🌐 AUTO UPDATE (SEGURO)
-# =========================
+
 def check_update():
     url_version = "https://raw.githubusercontent.com/usuario/repositorio/main/version.txt"
     url_script = "https://raw.githubusercontent.com/usuario/repositorio/main/tush.py"
@@ -143,9 +135,6 @@ def check_update():
     except Exception as e:
         print(f"[UPDATE] Error de actualización: {e}")
 
-# =========================
-# 🎨 UI (RE-DISEÑADA)
-# =========================
 class UI(QWidget):
     def __init__(self):
         super().__init__()
@@ -228,9 +217,6 @@ class UI(QWidget):
         version_label.setStyleSheet("color: #888888; font-size: 11px;")
         main_layout.addWidget(version_label)
 
-    # =========================
-    # 🖱️ DRAG WINDOW
-    # =========================
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
@@ -242,9 +228,7 @@ class UI(QWidget):
     def mouseReleaseEvent(self, event):
         self.drag_pos = None
 
-    # =========================
-    # 🎯 SET TOGGLE KEY
-    # =========================
+
     def set_hotkey(self):
         if self.listening:
             return
@@ -267,9 +251,6 @@ class UI(QWidget):
         self.hotkey.setText(key.upper())
         self.listening = False
 
-    # =========================
-    # 💾 CONFIG
-    # =========================
     def save_config(self):
         path, _ = QFileDialog.getSaveFileName(self, "Guardar", "", "JSON (*.json)")
         if not path:
@@ -299,85 +280,92 @@ class UI(QWidget):
             self.macro.set_kps(int(self.kps.text()))
         except:
             pass
+
 # =========================
-# 🔹 OVERLAY STATUS
+# 🔹 OVERLAY PROFESIONAL SOLO ROBLOX
 # =========================
 class Overlay(QWidget):
     def __init__(self, macro):
         super().__init__()
         self.macro = macro
+
+        # Flags para overlay: siempre encima, sin marco, click-through
         self.setWindowFlags(
             Qt.FramelessWindowHint |
             Qt.WindowStaysOnTopHint |
-            Qt.Tool |
-            Qt.X11BypassWindowManagerHint
+            Qt.Tool
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)  # click-through
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
-        self.label = QLabel("", self)
+        # Contenedor visual
+        self.label = QLabel("Macro: DESACTIVADO", self)
+        self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet("""
             QLabel {
-                color: white;
-                background-color: rgba(0,0,0,150);
-                padding: 8px 12px;
-                border-radius: 10px;
-                font-size: 14px;
+                color: #FF4444;
+                background-color: rgba(20,20,20,200);
+                padding: 8px 16px;
+                border-radius: 15px;
+                font-size: 16px;
                 font-weight: bold;
+                border: 2px solid rgba(255,255,255,30);
             }
         """)
-        self.label.setAlignment(Qt.AlignCenter)
-        self.resize(160, 40)
+        self.resize(200, 50)
 
-        # Timer para actualizar el estado
+        # Timer para actualización
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_status)
-        self.timer.start(100)  # cada 100ms
-
-        self.update_position()
+        self.timer.start(100)  # 100ms
 
     def update_status(self):
+        # Solo mostrar si Roblox está activo
+        if not is_roblox():
+            self.hide()
+            return
+        self.show()
+
+        # Cambiar texto y color según estado
         if self.macro.active:
             self.label.setText("Macro: ACTIVADO")
             self.label.setStyleSheet("""
                 QLabel {
-                    color: #00FF00;
-                    background-color: rgba(0,0,0,150);
-                    padding: 8px 12px;
-                    border-radius: 10px;
-                    font-size: 14px;
+                    color: #00FF88;
+                    background-color: rgba(20,20,20,220);
+                    padding: 8px 16px;
+                    border-radius: 15px;
+                    font-size: 16px;
                     font-weight: bold;
+                    border: 2px solid rgba(0,255,0,80);
                 }
             """)
         else:
             self.label.setText("Macro: DESACTIVADO")
             self.label.setStyleSheet("""
                 QLabel {
-                    color: #FF4444;
-                    background-color: rgba(0,0,0,150);
-                    padding: 8px 12px;
-                    border-radius: 10px;
-                    font-size: 14px;
+                    color: #FF5555;
+                    background-color: rgba(20,20,20,220);
+                    padding: 8px 16px;
+                    border-radius: 15px;
+                    font-size: 16px;
                     font-weight: bold;
+                    border: 2px solid rgba(255,0,0,80);
                 }
             """)
-        self.update_position()
 
-    def update_position(self):
+        # Posición: centro vertical de Roblox, alineado a la derecha
         try:
             hwnd = user32.FindWindowW(None, "Roblox")
             if hwnd:
                 rect = ctypes.wintypes.RECT()
                 user32.GetWindowRect(hwnd, ctypes.byref(rect))
                 x = rect.right - self.width() - 20
-                y = rect.bottom - self.height() - 20
+                y = rect.top + (rect.bottom - rect.top) // 2 - self.height() // 2
                 self.move(x, y)
         except:
             pass
 
-# =========================
-# 🚀 RUN (UI + Overlay)
-# =========================
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     ui = UI()
