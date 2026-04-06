@@ -1,4 +1,4 @@
-import sys, time, threading, ctypes, keyboard, mouse, requests, os, webbrowser
+import sys, time, threading, ctypes, keyboard, mouse, webbrowser, json
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -18,29 +18,6 @@ def is_roblox():
     except: return False
 
 # =========================
-# AUTO UPDATE
-# =========================
-def check_update():
-    url_version = "https://raw.githubusercontent.com/usuario/repositorio/main/version.txt"
-    url_script = "https://raw.githubusercontent.com/usuario/repositorio/main/tush.py"
-    current_version = "1.7"
-    try:
-        r = requests.get(url_version, timeout=5)
-        if r.status_code != 200: return
-        latest_version = r.text.strip()
-        if latest_version != current_version:
-            reply = QMessageBox.question(None, "Update", f"Nueva versión {latest_version} disponible. ¿Actualizar?",
-                                         QMessageBox.Yes | QMessageBox.No)
-            if reply == QMessageBox.Yes:
-                r2 = requests.get(url_script, timeout=10)
-                if r2.status_code == 200:
-                    with open(sys.argv[0], "wb") as f: f.write(r2.content)
-                    QMessageBox.information(None, "Update", "Actualización completada. Reiniciando...")
-                    os.execl(sys.executable, sys.executable, *sys.argv)
-                else: QMessageBox.warning(None, "Update", "Error al descargar script.")
-    except: pass
-
-# =========================
 # MACRO
 # =========================
 class Macro:
@@ -52,28 +29,41 @@ class Macro:
         self.mode_toggle = True
         self.lock = threading.Lock()
         threading.Thread(target=self.loop, daemon=True).start()
+
     def set_kps(self, kps):
         try: self.kps = max(1, min(2000, int(kps)))
         except: pass
+
     def set_action_key(self, key): self.action_key = key
     def set_toggle_key(self, key): self.toggle_key = key
     def set_mode(self, toggle: bool): self.mode_toggle = toggle
+
     def press(self):
         try:
             if self.action_key.startswith("mouse_"): mouse.click(self.action_key.split("_")[1])
             else: keyboard.press_and_release(self.action_key)
         except: pass
+
+    def update_json_status(self):
+        try:
+            data = {"active": self.active, "kps": self.kps}
+            with open("macro_status.json", "w") as f:
+                json.dump(data, f)
+        except: pass
+
     def loop(self):
         next_click = time.perf_counter()
         while True:
             if not self.active or not is_roblox():
                 time.sleep(0.005)
                 next_click = time.perf_counter()
+                self.update_json_status()
                 continue
             now = time.perf_counter()
             if now >= next_click:
                 self.press()
                 next_click = now + 1/self.kps
+                self.update_json_status()
             else:
                 time.sleep(max(0.0005, next_click - now))
 
@@ -87,6 +77,7 @@ class ToggleListener(threading.Thread):
         self.last_state = False
         self.last_toggle_time = 0
         self.cooldown = 0.2
+
     def run(self):
         while True:
             try:
@@ -121,18 +112,18 @@ class UI(QWidget):
         self.start_animation()
 
     def init_ui(self):
-        self.setFixedSize(500, 450)
+        self.setFixedSize(520, 470)
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowTitle("Tush Clash Macro")
-        self.setWindowIcon(QIcon("icon.png"))  # Coloca tu icono .png
+        self.setWindowIcon(QIcon("icon.png"))
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(25,25,25,25)
-        layout.setSpacing(15)
+        layout.setContentsMargins(30,30,30,30)
+        layout.setSpacing(20)
 
         # Título
-        title = QLabel("Tush Clash Macro")
+        title = QLabel(f"Tush Clash Macro - {self.version}")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size:28px;font-weight:bold;color:#d4af37;")
         layout.addWidget(title)
@@ -141,7 +132,7 @@ class UI(QWidget):
         layout.addWidget(QLabel("KPS"))
         self.kps_input = QLineEdit("30")
         self.kps_input.setStyleSheet(self.input_style())
-        self.kps_input.setFixedHeight(40)
+        self.kps_input.setFixedHeight(50)
         self.kps_input.textChanged.connect(lambda t: self.macro.set_kps(t))
         layout.addWidget(self.kps_input)
 
@@ -149,30 +140,30 @@ class UI(QWidget):
         layout.addWidget(QLabel("Action Key"))
         self.action = QComboBox()
         self.action.addItems(["f","e","space","q","r","t"])
-        self.action.setFixedHeight(40)
+        self.action.setFixedHeight(50)
         self.action.setStyleSheet(self.input_style())
         self.action.currentTextChanged.connect(self.macro.set_action_key)
         layout.addWidget(self.action)
 
         # Hotkey
-        layout.addWidget(QLabel("Hotkey"))
+        layout.addWidget(QLabel("Hotkeys"))
         hotkey_layout = QHBoxLayout()
         self.hotkey_btn = QPushButton("SET HOTKEY")
-        self.hotkey_btn.setFixedHeight(40)
+        self.hotkey_btn.setFixedHeight(50)
         self.hotkey_btn.setStyleSheet(self.btn_style())
         self.hotkey_btn.clicked.connect(self.set_hotkey)
         hotkey_layout.addWidget(self.hotkey_btn)
 
         self.mode_checkbox = QCheckBox("Toggle Mode")
         self.mode_checkbox.setChecked(True)
-        self.mode_checkbox.setStyleSheet("color:#d4af37;font-size:16px;")
+        self.mode_checkbox.setStyleSheet("color:#d4af37;font-size:18px;")
         self.mode_checkbox.stateChanged.connect(lambda s: self.macro.set_mode(self.mode_checkbox.isChecked()))
         hotkey_layout.addWidget(self.mode_checkbox)
         layout.addLayout(hotkey_layout)
 
         # Botón Creador
         creator_btn = QPushButton("CREADOR")
-        creator_btn.setFixedHeight(40)
+        creator_btn.setFixedHeight(50)
         creator_btn.setStyleSheet(self.btn_style())
         creator_btn.clicked.connect(lambda: webbrowser.open("https://guns.lol/2by"))
         layout.addWidget(creator_btn)
@@ -180,9 +171,9 @@ class UI(QWidget):
         layout.addStretch()
 
     def input_style(self):
-        return "padding:10px;border-radius:12px;background:#1e1e1e;color:#d4af37;font-size:18px;border:2px solid rgba(212,175,55,128);"
+        return "padding:12px;border-radius:12px;background:#1e1e1e;color:#d4af37;font-size:18px;border:2px solid rgba(212,175,55,128);"
     def btn_style(self):
-        return "padding:10px;border-radius:12px;background:#1e1e1e;color:#d4af37;font-size:16px;border:2px solid rgba(212,175,55,128);"
+        return "padding:12px;border-radius:12px;background:#1e1e1e;color:#d4af37;font-size:18px;border:2px solid rgba(212,175,55,128);"
 
     # DRAG
     def mousePressEvent(self,event):
@@ -225,8 +216,9 @@ class UI(QWidget):
 # RUN
 # =========================
 if __name__=="__main__":
+    import subprocess
+    subprocess.Popen([sys.executable, "update.py"])
     app=QApplication(sys.argv)
-    check_update()  # Verifica actualizaciones antes de abrir UI
     ui=UI()
     ui.show()
     sys.exit(app.exec_())
