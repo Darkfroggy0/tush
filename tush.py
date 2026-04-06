@@ -113,7 +113,7 @@ class ToggleListener(threading.Thread):
             time.sleep(0.01)
 
 # =========================
-# 🌐 AUTO UPDATE
+# 🌐 AUTO UPDATE (SEGURO)
 # =========================
 def check_update():
     url_version = "https://raw.githubusercontent.com/usuario/repositorio/main/version.txt"
@@ -121,16 +121,22 @@ def check_update():
     current_version = "1.4"
     try:
         r = requests.get(url_version, timeout=5)
+        if r.status_code != 200:
+            print("[UPDATE] No se pudo verificar la versión")
+            return
         latest_version = r.text.strip()
         if latest_version != current_version:
             print(f"[UPDATE] Nueva versión {latest_version} encontrada. Actualizando...")
-            r2 = requests.get(url_script)
-            with open(sys.argv[0], "wb") as f:
-                f.write(r2.content)
-            print("[UPDATE] Actualización completada. Reiniciando...")
-            os.execl(sys.executable, sys.executable, *sys.argv)
-    except:
-        pass
+            r2 = requests.get(url_script, timeout=10)
+            if r2.status_code == 200:
+                with open(sys.argv[0], "wb") as f:
+                    f.write(r2.content)
+                print("[UPDATE] Actualización completada. Reiniciando...")
+                os.execl(sys.executable, sys.executable, *sys.argv)
+            else:
+                print(f"[UPDATE] Error al descargar script: {r2.status_code}")
+    except Exception as e:
+        print(f"[UPDATE] Error de actualización: {e}")
 
 # =========================
 # 🎨 UI (RE-DISEÑADA)
