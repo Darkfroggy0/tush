@@ -299,9 +299,84 @@ class UI(QWidget):
             self.macro.set_kps(int(self.kps.text()))
         except:
             pass
+# =========================
+# 🔹 OVERLAY STATUS
+# =========================
+class Overlay(QWidget):
+    def __init__(self, macro):
+        super().__init__()
+        self.macro = macro
+        self.setWindowFlags(
+            Qt.FramelessWindowHint |
+            Qt.WindowStaysOnTopHint |
+            Qt.Tool |
+            Qt.X11BypassWindowManagerHint
+        )
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)  # click-through
+
+        self.label = QLabel("", self)
+        self.label.setStyleSheet("""
+            QLabel {
+                color: white;
+                background-color: rgba(0,0,0,150);
+                padding: 8px 12px;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+        """)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.resize(160, 40)
+
+        # Timer para actualizar el estado
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_status)
+        self.timer.start(100)  # cada 100ms
+
+        self.update_position()
+
+    def update_status(self):
+        if self.macro.active:
+            self.label.setText("Macro: ACTIVADO")
+            self.label.setStyleSheet("""
+                QLabel {
+                    color: #00FF00;
+                    background-color: rgba(0,0,0,150);
+                    padding: 8px 12px;
+                    border-radius: 10px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+            """)
+        else:
+            self.label.setText("Macro: DESACTIVADO")
+            self.label.setStyleSheet("""
+                QLabel {
+                    color: #FF4444;
+                    background-color: rgba(0,0,0,150);
+                    padding: 8px 12px;
+                    border-radius: 10px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+            """)
+        self.update_position()
+
+    def update_position(self):
+        try:
+            hwnd = user32.FindWindowW(None, "Roblox")
+            if hwnd:
+                rect = ctypes.wintypes.RECT()
+                user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                x = rect.right - self.width() - 20
+                y = rect.bottom - self.height() - 20
+                self.move(x, y)
+        except:
+            pass
 
 # =========================
-# 🚀 RUN
+# 🚀 RUN (UI + Overlay)
 # =========================
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -314,4 +389,9 @@ if __name__ == "__main__":
     anim.setEndValue(1)
     anim.setEasingCurve(QEasingCurve.InOutQuad)
     anim.start()
+
+    # Overlay de estado
+    overlay = Overlay(ui.macro)
+    overlay.show()
+
     sys.exit(app.exec_())
