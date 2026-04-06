@@ -98,7 +98,7 @@ class InputListener(threading.Thread):
 def auto_update():
     url_version = "https://raw.githubusercontent.com/Darkfroggy0/tush/main/version.txt"
     url_script = "https://raw.githubusercontent.com/Darkfroggy0/tush/main/tush.py"
-    current_version = "1.0"
+    current_version = "1.2"
     try:
         r = requests.get(url_version, timeout=5)
         latest_version = r.text.strip()
