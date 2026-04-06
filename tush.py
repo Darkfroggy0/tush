@@ -23,7 +23,7 @@ def is_roblox():
 def check_update():
     url_version = "https://raw.githubusercontent.com/usuario/repositorio/main/version.txt"
     url_script = "https://raw.githubusercontent.com/usuario/repositorio/main/tush.py"
-    current_version = "1.6"
+    current_version = "1.7"
     try:
         r = requests.get(url_version, timeout=5)
         if r.status_code != 200: return
