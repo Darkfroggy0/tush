@@ -85,13 +85,15 @@ class Macro:
                 time.sleep(0.01)
 
 # =========================
-# 🎮 TOGGLE LISTENER
+# 🎮 TOGGLE LISTENER (CON COOLDOWN)
 # =========================
 class ToggleListener(threading.Thread):
     def __init__(self, macro):
         super().__init__(daemon=True)
         self.macro = macro
         self.last_state = False
+        self.last_toggle_time = 0
+        self.cooldown = 0.2  # segundos
 
     def run(self):
         while True:
@@ -103,15 +105,18 @@ class ToggleListener(threading.Thread):
                 else:
                     pressed = keyboard.is_pressed(key)
 
+                current_time = time.perf_counter()
                 if pressed and not self.last_state:
-                    self.macro.active = not self.macro.active
+                    # Verifica cooldown
+                    if current_time - self.last_toggle_time >= self.cooldown:
+                        self.macro.active = not self.macro.active
+                        self.last_toggle_time = current_time
                     self.last_state = True
                 elif not pressed:
                     self.last_state = False
             except:
                 pass
             time.sleep(0.01)
-
 # =========================
 # 🌐 AUTO UPDATE (SEGURO)
 # =========================
