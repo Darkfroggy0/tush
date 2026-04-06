@@ -137,7 +137,7 @@ def auto_update():
         print(f"[UPDATE] Error al revisar actualización: {e}")
 
 # =========================
-# 🎨 UI
+# 🎨 UI RE-DISEÑADA
 # =========================
 class UI(QWidget):
     def __init__(self):
@@ -147,74 +147,84 @@ class UI(QWidget):
         self.listener.start()
         self.listening = False
         self.drag_pos = None
-        self.version = "v1.2"  # ← aquí defines la versión que se muestra
+        self.version = "v1.2"  # Versión visible
         self.init_ui()
 
     def init_ui(self):
-        self.setFixedSize(420, 460)
+        self.setFixedSize(420, 500)
         self.setWindowFlags(Qt.FramelessWindowHint)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 25, 30, 25)
-        layout.setSpacing(18)
-
-        title = QLabel("Tush Clash")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size:18px; font-weight:bold;")
-
-        self.kps = QLineEdit("30")
-        self.kps.setAlignment(Qt.AlignCenter)
-        self.kps.textChanged.connect(self.update_kps)
-
-        self.action = QComboBox()
-        self.action.addItems(["f","e","space","mouse_left","mouse_right","mouse_middle","mouse_x","mouse_x2"])
-        self.action.currentTextChanged.connect(self.macro.set_action_key)
-
-        self.hotkey = QPushButton("SET HOLD KEY")
-        self.hotkey.clicked.connect(self.set_hotkey)
-
-        save_btn = QPushButton("Save Config")
-        save_btn.clicked.connect(self.save_config)
-        load_btn = QPushButton("Load Config")
-        load_btn.clicked.connect(self.load_config)
-        creator = QPushButton("CREADOR")
-        creator.clicked.connect(lambda: webbrowser.open("https://guns.lol/2by"))
-
-        # =========================
-        # Layout principal
-        # =========================
-        layout.addWidget(title)
-        layout.addWidget(QLabel("KPS"))
-        layout.addWidget(self.kps)
-        layout.addWidget(QLabel("Action"))
-        layout.addWidget(self.action)
-        layout.addWidget(QLabel("Hold Key"))
-        layout.addWidget(self.hotkey)
-        layout.addWidget(save_btn)
-        layout.addWidget(load_btn)
-        layout.addStretch()
-        layout.addWidget(creator)
-
-        # =========================
-        # Label versión
-        # =========================
-        version_label = QLabel(self.version)
-        version_label.setAlignment(Qt.AlignRight)
-        version_label.setStyleSheet("color: #888888; font-size:10px;")
-        layout.addWidget(version_label)
-
         self.setStyleSheet("""
         QWidget {
             background: #121212;
             color: white;
             border-radius: 15px;
+            font-family: Arial, sans-serif;
         }
         QLineEdit, QComboBox, QPushButton {
-            padding: 10px;
+            padding: 12px;
             border-radius: 10px;
             background: #1e1e1e;
+            font-size: 14px;
         }
         QPushButton:hover { background: #2a2a2a; }
+        QLabel { font-size: 14px; }
         """)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(30, 25, 30, 25)
+        main_layout.setSpacing(20)
+
+        # ---- Título ----
+        title = QLabel("Tush Clash")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 22px; font-weight: bold;")
+        main_layout.addWidget(title)
+
+        # ---- KPS ----
+        kps_label = QLabel("KPS")
+        main_layout.addWidget(kps_label)
+        self.kps = QLineEdit("30")
+        self.kps.setAlignment(Qt.AlignCenter)
+        self.kps.textChanged.connect(self.update_kps)
+        main_layout.addWidget(self.kps)
+
+        # ---- Acción ----
+        action_label = QLabel("Action Key")
+        main_layout.addWidget(action_label)
+        self.action = QComboBox()
+        self.action.addItems(["f","e","space","mouse_left","mouse_right","mouse_middle","mouse_x","mouse_x2"])
+        self.action.currentTextChanged.connect(self.macro.set_action_key)
+        main_layout.addWidget(self.action)
+
+        # ---- Hold Key ----
+        hold_label = QLabel("Hold Key")
+        main_layout.addWidget(hold_label)
+        self.hotkey = QPushButton("SET HOLD KEY")
+        self.hotkey.clicked.connect(self.set_hotkey)
+        main_layout.addWidget(self.hotkey)
+
+        # ---- Config buttons ----
+        buttons_layout = QHBoxLayout()
+        save_btn = QPushButton("Save Config")
+        save_btn.clicked.connect(self.save_config)
+        load_btn = QPushButton("Load Config")
+        load_btn.clicked.connect(self.load_config)
+        buttons_layout.addWidget(save_btn)
+        buttons_layout.addWidget(load_btn)
+        main_layout.addLayout(buttons_layout)
+
+        # ---- Creador ----
+        creator = QPushButton("CREADOR")
+        creator.clicked.connect(lambda: webbrowser.open("https://guns.lol/2by"))
+        main_layout.addWidget(creator)
+
+        main_layout.addStretch()
+
+        # ---- Version label ----
+        version_label = QLabel(self.version)
+        version_label.setAlignment(Qt.AlignRight)
+        version_label.setStyleSheet("color: #888888; font-size: 11px;")
+        main_layout.addWidget(version_label)
     # DRAG
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
