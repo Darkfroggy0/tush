@@ -1,7 +1,29 @@
-import sys, time, threading, ctypes, keyboard, mouse, webbrowser, json
+import sys, time, threading, ctypes, keyboard, mouse, webbrowser, json, psutil
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+
+# =========================
+# ACTUALIZACIÓN SEGURA
+# =========================
+import os
+import subprocess
+
+def check_update():
+    if not os.path.exists("version.json"):
+        return
+    try:
+        with open("version.json", "r") as f:
+            data = json.load(f)
+        local = data.get("current_version", "")
+        latest = data.get("latest_version", "")
+        if local != latest and os.path.exists("update.py"):
+            subprocess.Popen([sys.executable, "update.py"])
+    except Exception as e:
+        print("Error al comprobar update:", e)
+
+# Llamamos al inicio
+check_update()
 
 # =========================
 # WINDOWS API
@@ -18,7 +40,20 @@ def is_roblox():
     except: return False
 
 # =========================
-# MACRO
+# SUBIR PRIORIDAD DE ROBLOX
+# =========================
+def set_roblox_high_priority():
+    for proc in psutil.process_iter(['name', 'pid']):
+        if "RobloxPlayerBeta.exe" in proc.info['name']:
+            try:
+                p = psutil.Process(proc.info['pid'])
+                p.nice(psutil.HIGH_PRIORITY_CLASS)
+            except: pass
+
+threading.Thread(target=lambda: [set_roblox_high_priority() or time.sleep(5) for _ in iter(int,1)], daemon=True).start()
+
+# =========================
+# MACRO OPTIMIZADO CON KPS REAL
 # =========================
 class Macro:
     def __init__(self):
@@ -27,11 +62,10 @@ class Macro:
         self.kps = 30
         self.active = False
         self.mode_toggle = True
-        self.lock = threading.Lock()
         threading.Thread(target=self.loop, daemon=True).start()
 
     def set_kps(self, kps):
-        try: self.kps = max(1, min(2000, int(kps)))
+        try: self.kps = max(1, int(kps))
         except: pass
 
     def set_action_key(self, key): self.action_key = key
@@ -40,32 +74,25 @@ class Macro:
 
     def press(self):
         try:
-            if self.action_key.startswith("mouse_"): mouse.click(self.action_key.split("_")[1])
-            else: keyboard.press_and_release(self.action_key)
-        except: pass
-
-    def update_json_status(self):
-        try:
-            data = {"active": self.active, "kps": self.kps}
-            with open("macro_status.json", "w") as f:
-                json.dump(data, f)
+            if self.action_key.startswith("mouse_"):
+                mouse.click(self.action_key.split("_")[1])
+            else:
+                keyboard.press_and_release(self.action_key)
         except: pass
 
     def loop(self):
         next_click = time.perf_counter()
         while True:
-            if not self.active or not is_roblox():
-                time.sleep(0.005)
-                next_click = time.perf_counter()
-                self.update_json_status()
-                continue
-            now = time.perf_counter()
-            if now >= next_click:
-                self.press()
-                next_click = now + 1/self.kps
-                self.update_json_status()
+            if self.active and is_roblox():
+                now = time.perf_counter()
+                if now >= next_click:
+                    self.press()
+                    next_click = now + 1/self.kps
+                else:
+                    time.sleep(max(0.0005, next_click - now))
             else:
-                time.sleep(max(0.0005, next_click - now))
+                time.sleep(0.01)
+                next_click = time.perf_counter()
 
 # =========================
 # TOGGLE LISTENER
@@ -76,63 +103,58 @@ class ToggleListener(threading.Thread):
         self.macro = macro
         self.last_state = False
         self.last_toggle_time = 0
-        self.cooldown = 0.2
-
     def run(self):
         while True:
             try:
                 key = self.macro.toggle_key
-                pressed = False
-                if key.startswith("mouse_"): pressed = mouse.is_pressed(button=key.split("_")[1])
-                else: pressed = keyboard.is_pressed(key)
+                pressed = keyboard.is_pressed(key) if not key.startswith("mouse_") else mouse.is_pressed(button=key.split("_")[1])
                 now = time.perf_counter()
                 if self.macro.mode_toggle:
-                    if pressed and not self.last_state and now - self.last_toggle_time >= self.cooldown:
+                    if pressed and not self.last_state and now - self.last_toggle_time >= 0.2:
                         self.macro.active = not self.macro.active
                         self.last_toggle_time = now
                     self.last_state = pressed
-                else: self.macro.active = pressed
+                else:
+                    self.macro.active = pressed
             except: pass
-            time.sleep(0.005)
+            time.sleep(0.01)
 
 # =========================
-# UI
+# UI NEGRA MINIMALISTA
 # =========================
 class UI(QWidget):
     def __init__(self):
         super().__init__()
-        self.version = "v1.6"
+        self.version = "v1.7"
         self.macro = Macro()
         self.listener = ToggleListener(self.macro)
         self.listener.start()
         self.listening = False
         self.drag_pos = None
-        self.gradient_offset = 0
         self.init_ui()
-        self.start_animation()
 
     def init_ui(self):
-        self.setFixedSize(520, 470)
+        self.setFixedSize(400, 300)
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowTitle("Tush Clash Macro")
         self.setWindowIcon(QIcon("icon.png"))
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30,30,30,30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(20,20,20,20)
+        layout.setSpacing(15)
 
-        # Título
+        # Titulo
         title = QLabel(f"Tush Clash Macro - {self.version}")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size:28px;font-weight:bold;color:#d4af37;")
+        title.setStyleSheet("font-size:24px;font-weight:bold;color:white;")
         layout.addWidget(title)
 
         # KPS
         layout.addWidget(QLabel("KPS"))
-        self.kps_input = QLineEdit("30")
+        self.kps_input = QLineEdit(str(self.macro.kps))
         self.kps_input.setStyleSheet(self.input_style())
-        self.kps_input.setFixedHeight(50)
+        self.kps_input.setFixedHeight(40)
         self.kps_input.textChanged.connect(lambda t: self.macro.set_kps(t))
         layout.addWidget(self.kps_input)
 
@@ -140,30 +162,29 @@ class UI(QWidget):
         layout.addWidget(QLabel("Action Key"))
         self.action = QComboBox()
         self.action.addItems(["f","e","space","q","r","t"])
-        self.action.setFixedHeight(50)
+        self.action.setFixedHeight(40)
         self.action.setStyleSheet(self.input_style())
         self.action.currentTextChanged.connect(self.macro.set_action_key)
         layout.addWidget(self.action)
 
         # Hotkey
-        layout.addWidget(QLabel("Hotkeys"))
         hotkey_layout = QHBoxLayout()
         self.hotkey_btn = QPushButton("SET HOTKEY")
-        self.hotkey_btn.setFixedHeight(50)
+        self.hotkey_btn.setFixedHeight(40)
         self.hotkey_btn.setStyleSheet(self.btn_style())
         self.hotkey_btn.clicked.connect(self.set_hotkey)
         hotkey_layout.addWidget(self.hotkey_btn)
 
         self.mode_checkbox = QCheckBox("Toggle Mode")
         self.mode_checkbox.setChecked(True)
-        self.mode_checkbox.setStyleSheet("color:#d4af37;font-size:18px;")
+        self.mode_checkbox.setStyleSheet("color:white;font-size:16px;")
         self.mode_checkbox.stateChanged.connect(lambda s: self.macro.set_mode(self.mode_checkbox.isChecked()))
         hotkey_layout.addWidget(self.mode_checkbox)
         layout.addLayout(hotkey_layout)
 
-        # Botón Creador
+        # Boton creador
         creator_btn = QPushButton("CREADOR")
-        creator_btn.setFixedHeight(50)
+        creator_btn.setFixedHeight(40)
         creator_btn.setStyleSheet(self.btn_style())
         creator_btn.clicked.connect(lambda: webbrowser.open("https://guns.lol/2by"))
         layout.addWidget(creator_btn)
@@ -171,9 +192,9 @@ class UI(QWidget):
         layout.addStretch()
 
     def input_style(self):
-        return "padding:12px;border-radius:12px;background:#1e1e1e;color:#d4af37;font-size:18px;border:2px solid rgba(212,175,55,128);"
+        return "padding:10px;border-radius:10px;background:#1e1e1e;color:white;font-size:16px;border:2px solid rgba(255,255,255,0.3);"
     def btn_style(self):
-        return "padding:12px;border-radius:12px;background:#1e1e1e;color:#d4af37;font-size:18px;border:2px solid rgba(212,175,55,128);"
+        return "padding:10px;border-radius:10px;background:#1e1e1e;color:white;font-size:16px;border:2px solid rgba(255,255,255,0.3);"
 
     # DRAG
     def mousePressEvent(self,event):
@@ -199,26 +220,16 @@ class UI(QWidget):
         self.hotkey_btn.setText(key.upper())
         self.listening=False
 
-    # BACKGROUND ANIMADO
-    def start_animation(self):
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update)
-        self.timer.start(30)
+    # FONDO NEGRO
     def paintEvent(self,event):
         p=QPainter(self)
-        gradient=QLinearGradient(0,0,self.width(),self.height())
-        gradient.setColorAt(0, QColor.fromHsv((self.gradient_offset)%360,180,50))
-        gradient.setColorAt(1, QColor.fromHsv((self.gradient_offset+60)%360,180,100))
-        self.gradient_offset+=1
-        p.fillRect(self.rect(), gradient)
+        p.fillRect(self.rect(), QColor("#000000"))
 
 # =========================
 # RUN
 # =========================
 if __name__=="__main__":
-    import subprocess
-    subprocess.Popen([sys.executable, "update.py"])
-    app=QApplication(sys.argv)
-    ui=UI()
+    app = QApplication(sys.argv)
+    ui = UI()
     ui.show()
     sys.exit(app.exec_())
