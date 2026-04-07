@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-
 DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1490952754674532483/VF5gThbKFvEKlPP2Mm5pec6iUuyFyl4XdlKFnFM7gTP6vpqzQa62dPBBhS42l4S4ShY_"
 
 GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/HWID%20Baneados"
@@ -11,6 +10,8 @@ GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/he
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
 CURRENT_VERSION = "v2.8"
+EXE_NAME = "TushMacro.exe"
+
 
 def get_hwid():
     try:
@@ -29,7 +30,6 @@ def get_hwid():
 
 HWID = get_hwid()
 
-
 def load_banned_hwids():
     try:
         r = requests.get(GITHUB_BAN_URL, timeout=8)
@@ -41,7 +41,7 @@ def load_banned_hwids():
 BANNED_HWIDS = load_banned_hwids()
 
 if HWID in BANNED_HWIDS:
-    QMessageBox.critical(None, "ACCESO DENEGADO", 
+    QMessageBox.critical(None, "❌ ACCESO DENEGADO", 
         "Has sido baneado.\n\n"
         "Si crees que es un error agrega al Creador de la macro:\n\n"
         ".2by_ en Discord\n\n"
@@ -49,49 +49,54 @@ if HWID in BANNED_HWIDS:
         "https://guns.lol/2by")
     sys.exit(1)
 
+
 def auto_update():
     try:
-        response = requests.get(GITHUB_LATEST_URL, timeout=12)
+        response = requests.get(GITHUB_LATEST_URL, timeout=15)
         response.raise_for_status()
         latest_code = response.text
 
-        with open(__file__, "r", encoding="utf-8") as f:
-            local_code = f.read()
+   
+        local_code = ""
+        if os.path.exists("tush.py"):
+            try:
+                with open("tush.py", "r", encoding="utf-8") as f:
+                    local_code = f.read()
+            except:
+                pass
 
         if hashlib.md5(local_code.encode('utf-8')).hexdigest() == hashlib.md5(latest_code.encode('utf-8')).hexdigest():
             return  
 
-        updater_script = "tush_updater.bat"
-        with open(updater_script, "w", encoding="utf-8") as f:
+
+        with open("tush_new.py", "w", encoding="utf-8") as f:
+            f.write(latest_code)
+
+   
+        with open("tush_updater.bat", "w", encoding="utf-8") as f:
             f.write('@echo off\n')
             f.write('title Tush Macro - Actualizacion Automatica\n')
             f.write('echo ===============================================\n')
-            f.write('echo          Actualizando Tush Macro...\n')
+            f.write('echo     Actualizando Tush Macro...\n')
             f.write('echo ===============================================\n')
             f.write('echo.\n')
-            f.write('echo Descargando nueva version...\n')
-            f.write('timeout /t 2 >nul\n')
-            f.write('echo Reemplazando archivos...\n')
+            f.write('echo Reemplazando codigo fuente...\n')
             f.write('move /y "tush_new.py" "tush.py" >nul 2>&1\n')
             f.write('echo.\n')
             f.write('echo Actualizacion completada correctamente.\n')
             f.write('echo.\n')
             f.write('echo Presiona alguna tecla para cerrar el cmd y poder usar la macro...\n')
             f.write('pause >nul\n')
-            f.write('start "" "TushMacro.exe"\n')
-            f.write('del "%~f0"\n')
+            f.write(f'start "" "{EXE_NAME}"\n')
+            f.write('del "tush_updater.bat" >nul 2>&1\n')
             f.write('exit\n')
 
-   
-        with open("tush_new.py", "w", encoding="utf-8") as f:
-            f.write(latest_code)
-
-   
-        subprocess.Popen(['cmd', '/c', updater_script], creationflags=subprocess.CREATE_NEW_CONSOLE)
-        sys.exit(0)   
+        # Ejecutar updater
+        subprocess.Popen(['cmd', '/c', 'tush_updater.bat'], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        sys.exit(0)
 
     except Exception as e:
-        print(f"Error en auto-update: {e}")  
+        print(f"Error en actualización: {e}")
 
 
 def load_licenses():
@@ -107,7 +112,6 @@ def load_licenses():
         return licenses
     except:
         return {}
-
 
 def notify_license_request(license_key, hwid):
     notified_file = "notified_licenses.txt"
@@ -142,8 +146,6 @@ def notify_license_request(license_key, hwid):
     except:
         pass
 
-
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
@@ -156,8 +158,7 @@ if __name__ == "__main__":
 
     if not os.path.exists(license_file):
         while True:
-            license_key, ok = QInputDialog.getText(None, "Licencia Requerida", 
-                "Ingresa tu licencia:")
+            license_key, ok = QInputDialog.getText(None, "Licencia Requerida", "Ingresa tu licencia:")
             if not ok or not license_key.strip():
                 sys.exit(0)
 
