@@ -12,7 +12,7 @@ GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
-CURRENT_VERSION = "v2.8"
+CURRENT_VERSION = "v2.7"
 
 # =========================
 # GENERAR HWID
@@ -57,50 +57,53 @@ if HWID in BANNED_HWIDS:
     sys.exit(1)
 
 # =========================
-# ACTUALIZACIÓN SILENCIOSA CON CMD
+# ACTUALIZACIÓN AUTOMÁTICA AL INICIO (Sin preguntar)
 # =========================
-def silent_update():
+def auto_update():
     try:
         response = requests.get(GITHUB_LATEST_URL, timeout=12)
         response.raise_for_status()
         latest_code = response.text
 
+        # Comparar versión actual con la del GitHub
         with open(__file__, "r", encoding="utf-8") as f:
             local_code = f.read()
 
         if hashlib.md5(local_code.encode('utf-8')).hexdigest() == hashlib.md5(latest_code.encode('utf-8')).hexdigest():
             return  # No hay actualización
 
-        # Crear script de actualización temporal
-        updater_script = "updater.bat"
+        # Hay actualización → Proceder automáticamente
+        updater_script = "tush_updater.bat"
         with open(updater_script, "w", encoding="utf-8") as f:
             f.write('@echo off\n')
+            f.write('title Tush Macro - Actualizacion Automatica\n')
             f.write('echo ===============================================\n')
             f.write('echo          Actualizando Tush Macro...\n')
             f.write('echo ===============================================\n')
             f.write('echo.\n')
             f.write('echo Descargando nueva version...\n')
             f.write('timeout /t 2 >nul\n')
-            f.write(f'echo Reemplazando archivo...\n')
-            f.write('move /y "%~dp0tush_new.py" "%~dp0tush.py" >nul 2>&1\n')
+            f.write('echo Reemplazando archivos...\n')
+            f.write('move /y "tush_new.py" "tush.py" >nul 2>&1\n')
             f.write('echo.\n')
-            f.write('echo Actualizacion completada.\n')
+            f.write('echo Actualizacion completada correctamente.\n')
             f.write('echo.\n')
-            f.write('echo Presiona alguna tecla para cerrar el cmd y poder usar la macro.\n')
+            f.write('echo Presiona alguna tecla para cerrar el cmd y poder usar la macro...\n')
             f.write('pause >nul\n')
-            f.write('start "" "%~dp0TushMacro.exe"\n')
+            f.write('start "" "TushMacro.exe"\n')
             f.write('del "%~f0"\n')
+            f.write('exit\n')
 
-        # Guardar nueva versión temporal
+        # Guardar la nueva versión
         with open("tush_new.py", "w", encoding="utf-8") as f:
             f.write(latest_code)
 
-        # Ejecutar el updater en CMD y cerrar el programa actual
+        # Ejecutar el actualizador en una ventana CMD visible
         subprocess.Popen(['cmd', '/c', updater_script], creationflags=subprocess.CREATE_NEW_CONSOLE)
-        sys.exit(0)
+        sys.exit(0)   # Cerrar el programa actual
 
     except Exception as e:
-        print(f"Error en actualización silenciosa: {e}")
+        print(f"Error en auto-update: {e}")  # Solo para debug
 
 # =========================
 # CARGAR LICENCIAS
@@ -162,9 +165,12 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
 
-    # Actualización silenciosa (sin popup)
-    silent_update()
+    # === ACTUALIZACIÓN AUTOMÁTICA AL INICIO ===
+    auto_update()
 
+    # =========================
+    # SISTEMA DE LICENCIA
+    # =========================
     license_file = "license.key"
 
     if not os.path.exists(license_file):
@@ -204,7 +210,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     # =========================
-    # WINDOWS API + MACRO + UI (resto sin cambios)
+    # WINDOWS API + MACRO + UI
     # =========================
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
