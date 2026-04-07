@@ -12,7 +12,7 @@ GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
-CURRENT_VERSION = "v2.7"
+CURRENT_VERSION = "v2.8 - Licencias Mejoradas"
 
 # =========================
 # GENERAR HWID
@@ -35,7 +35,7 @@ def get_hwid():
 HWID = get_hwid()
 
 # =========================
-# CARGAR DATOS DE GITHUB
+# CARGAR DATOS
 # =========================
 def load_banned_hwids():
     try:
@@ -53,47 +53,43 @@ def load_licenses():
         for line in r.text.splitlines():
             line = line.strip()
             if line and not line.startswith('#') and '=' in line:
-                key, hwid_val = [x.strip() for x in line.split('=', 1)]
-                licenses[key] = hwid_val
+                key, value = [x.strip() for x in line.split('=', 1)]
+                licenses[key] = value
         return licenses
     except:
         return {}
 
 # =========================
-# NOTIFICACIÓN DE NUEVA LICENCIA (Solo una vez)
+# NOTIFICACIÓN DE LICENCIA LIBRE
 # =========================
-def notify_new_license(license_key, hwid):
+def notify_license_request(license_key, hwid):
     notified_file = "notified_licenses.txt"
     entry = f"{license_key}|{hwid}"
     
-    # Evitar duplicados
     if os.path.exists(notified_file):
         with open(notified_file, "r", encoding="utf-8") as f:
             if entry in f.read():
-                return
-    
-    # Enviar webhook con mención
+                return  # Ya notificado
+
     try:
         data = {
             "username": "Tush License Bot",
-            "content": "<@1140745091191939184>",   # Mención a ti
+            "content": "<@1140745091191939184>",
             "embeds": [{
-                "title": "🆕 Nueva Solicitud de Licencia",
+                "title": "🔑 Nueva Licencia Libre Solicitada",
                 "color": 0xffaa00,
                 "fields": [
                     {"name": "Licencia", "value": f"`{license_key}`", "inline": False},
-                    {"name": "HWID", "value": f"`{hwid}`", "inline": False},
-                    {"name": "PC Name", "value": platform.node(), "inline": True},
-                    {"name": "Usuario Windows", "value": os.getlogin(), "inline": True},
-                    {"name": "Hora", "value": time.strftime("%Y-%m-%d %H:%M:%S"), "inline": True},
-                    {"name": "Acción", "value": "Revisa y agrega la licencia en GitHub si es válida", "inline": False}
+                    {"name": "HWID del Usuario", "value": f"`{hwid}`", "inline": False},
+                    {"name": "PC", "value": platform.node(), "inline": True},
+                    {"name": "Usuario", "value": os.getlogin(), "inline": True},
+                    {"name": "Hora", "value": time.strftime("%Y-%m-%d %H:%M:%S"), "inline": True}
                 ],
-                "footer": {"text": "Sistema de Licencias Tush Macro"}
+                "footer": {"text": "Agrega el HWID a esta licencia en GitHub → Linc"}
             }]
         }
         requests.post(DISCORD_WEBHOOK, json=data, timeout=6)
         
-        # Marcar como notificado
         with open(notified_file, "a", encoding="utf-8") as f:
             f.write(entry + "\n")
     except:
@@ -111,31 +107,20 @@ def check_for_update():
         with open(__file__, "r", encoding="utf-8") as f:
             local_code = f.read()
 
-        local_hash = hashlib.md5(local_code.encode('utf-8')).hexdigest()
-        latest_hash = hashlib.md5(latest_code.encode('utf-8')).hexdigest()
-
-        if local_hash != latest_hash:
-            reply = QMessageBox.question(None, "Actualización Disponible",
-                f"Hay una nueva versión disponible.\n\n"
-                f"Versión actual: {CURRENT_VERSION}\n"
-                f"¿Quieres actualizar ahora?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-
-            if reply == QMessageBox.Yes:
-                backup_file = "tush_backup.py"
-                with open(backup_file, "w", encoding="utf-8") as f:
+        if hashlib.md5(local_code.encode('utf-8')).hexdigest() != hashlib.md5(latest_code.encode('utf-8')).hexdigest():
+            if QMessageBox.question(None, "Actualización Disponible", 
+                f"Hay una nueva versión disponible.\n\n¿Quieres actualizar ahora?", 
+                QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
+                
+                with open("tush_backup.py", "w", encoding="utf-8") as f:
                     f.write(local_code)
-
                 with open(__file__, "w", encoding="utf-8") as f:
                     f.write(latest_code)
-
-                QMessageBox.information(None, "Actualización", 
-                    "Actualización completada correctamente.\nEl programa se reiniciará.")
-                
+                QMessageBox.information(None, "Actualizado", "Se actualizó el programa. Reiniciando...")
                 subprocess.Popen([sys.executable, __file__])
                 sys.exit(0)
-    except Exception as e:
-        print(f"Error en actualización: {e}")
+    except:
+        pass
 
 # =========================
 # MAIN
@@ -144,19 +129,16 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
 
-    # Verificar baneo
     if HWID in load_banned_hwids():
         QMessageBox.critical(None, "Acceso Denegado", f"Tu HWID ha sido baneado.\nHWID: {HWID}")
         sys.exit(1)
 
-    # Sistema de Licencia
     license_file = "license.key"
 
     if not os.path.exists(license_file):
         while True:
             license_key, ok = QInputDialog.getText(None, "Licencia Requerida", 
-                "Ingresa tu licencia de Tush Macro:")
-            
+                "Ingresa tu licencia:")
             if not ok or not license_key.strip():
                 sys.exit(0)
 
@@ -164,36 +146,38 @@ if __name__ == "__main__":
             licenses = load_licenses()
 
             if license_key in licenses:
-                if licenses[license_key] == HWID:
+                registered_hwid = licenses[license_key]
+                
+                if registered_hwid == HWID:
+                    # Licencia ya vinculada correctamente
                     with open(license_file, "w", encoding="utf-8") as f:
                         f.write(f"{license_key}\n{HWID}")
                     QMessageBox.information(None, "Éxito", "Licencia activada correctamente.")
                     break
+                elif registered_hwid == "" or registered_hwid.lower() == "libre" or registered_hwid == "PENDIENTE":
+                    # Licencia existe pero está libre → Notificar al creador
+                    notify_license_request(license_key, HWID)
+                    QMessageBox.information(None, "Licencia Libre", 
+                        "Esta licencia está disponible.\nSe ha enviado una solicitud automática al creador.\n"
+                        "Espera a que la vincule con tu HWID.")
                 else:
-                    QMessageBox.critical(None, "Error", "Esta licencia no es de este HWID.\nContacta con 2by.")
+                    QMessageBox.critical(None, "Error", "Esta licencia ya está vinculada a otro dispositivo.\nContacta con 2by.")
             else:
-                # Licencia nueva → Notificar al creador (solo una vez)
-                notify_new_license(license_key, HWID)
-                QMessageBox.critical(None, "Licencia no encontrada", 
-                    "Esta licencia aún no está registrada en el sistema.\n\n"
-                    "Se ha enviado una notificación automática al creador (@1140745091191939184).\n"
-                    "Espera a que te agregue la licencia.")
-                # No salimos del loop, permitimos que intente de nuevo después de que agregues la licencia
+                QMessageBox.critical(None, "Error", "Esta licencia no existe.")
     else:
         # Verificar licencia guardada
         with open(license_file, "r", encoding="utf-8") as f:
             lines = [line.strip() for line in f.readlines()]
         if len(lines) < 2 or lines[1] != HWID:
             QMessageBox.critical(None, "Error", "Esta licencia no corresponde a este dispositivo.\nContacta con 2by.")
-            if os.path.exists(license_file):
-                os.remove(license_file)
+            os.remove(license_file)
             sys.exit(1)
 
-    # Log normal de ejecución
+    # Log de ejecución
     try:
         requests.post(DISCORD_WEBHOOK, json={
             "username": "Tush Logger",
-            "embeds": [{"title": "Nueva Ejecución", "color": 0x00ff00, "fields": [
+            "embeds": [{"title": "Ejecución Normal", "color": 0x00ff00, "fields": [
                 {"name": "HWID", "value": f"`{HWID}`"},
                 {"name": "Versión", "value": CURRENT_VERSION}
             ]}]
@@ -204,7 +188,7 @@ if __name__ == "__main__":
     check_for_update()
 
     # =========================
-    # WINDOWS API
+    # WINDOWS API, MACRO, LISTENER, OVERLAY, UI
     # =========================
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
@@ -221,7 +205,6 @@ if __name__ == "__main__":
         except:
             return False
 
-    # Prioridad alta Roblox
     def set_roblox_high_priority():
         for proc in psutil.process_iter(['name', 'pid']):
             if "RobloxPlayerBeta.exe" in (proc.info.get('name') or ""):
@@ -232,9 +215,7 @@ if __name__ == "__main__":
 
     threading.Thread(target=lambda: [set_roblox_high_priority() or time.sleep(5) for _ in iter(int,1)], daemon=True).start()
 
-    # =========================
-    # MACRO
-    # =========================
+    # Macro (sin cambios)
     class Macro:
         def __init__(self):
             self.action_key = "f"
@@ -248,7 +229,6 @@ if __name__ == "__main__":
         def set_kps(self, kps):
             try: self.kps = max(1, int(kps))
             except: pass
-
         def set_action_key(self, key): self.action_key = key
         def set_toggle_key(self, key): self.toggle_key = key
         def set_mode(self, toggle: bool): self.mode_toggle = toggle
@@ -297,9 +277,6 @@ if __name__ == "__main__":
                     time.sleep(0.008)
                     next_click = time.perf_counter()
 
-    # =========================
-    # LISTENER
-    # =========================
     class ToggleListener(threading.Thread):
         def __init__(self, macro):
             super().__init__(daemon=True)
@@ -332,9 +309,6 @@ if __name__ == "__main__":
                     pass
                 time.sleep(0.004)
 
-    # =========================
-    # OVERLAY
-    # =========================
     class Overlay(QWidget):
         def __init__(self, macro):
             super().__init__()
@@ -365,9 +339,6 @@ if __name__ == "__main__":
             x = (screen.width() - self.width()) // 2
             self.move(x, 50)
 
-    # =========================
-    # UI
-    # =========================
     class UI(QWidget):
         def __init__(self):
             super().__init__()
@@ -439,13 +410,10 @@ if __name__ == "__main__":
             return "padding:10px;border-radius:10px;background:#1e1e1e;color:white;font-size:16px;border:2px solid rgba(255,255,255,0.3);"
 
         def mousePressEvent(self, event):
-            if event.button() == Qt.LeftButton:
-                self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+            if event.button() == Qt.LeftButton: self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
         def mouseMoveEvent(self, event):
-            if self.drag_pos and event.buttons() == Qt.LeftButton:
-                self.move(event.globalPos() - self.drag_pos)
-        def mouseReleaseEvent(self, event):
-            self.drag_pos = None
+            if self.drag_pos and event.buttons() == Qt.LeftButton: self.move(event.globalPos() - self.drag_pos)
+        def mouseReleaseEvent(self, event): self.drag_pos = None
 
         def set_hotkey(self):
             if self.listening: return
@@ -478,9 +446,6 @@ if __name__ == "__main__":
             p = QPainter(self)
             p.fillRect(self.rect(), QColor("#000000"))
 
-    # =========================
-    # EJECUTAR
-    # =========================
     ui = UI()
     ui.show()
     sys.exit(app.exec_())
