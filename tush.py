@@ -9,7 +9,7 @@ GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
-CURRENT_VERSION = "v2.8"
+CURRENT_VERSION = "v2.7"
 EXE_NAME = "TushMacro.exe"
 
 
@@ -52,51 +52,51 @@ if HWID in BANNED_HWIDS:
 
 def auto_update():
     try:
-        response = requests.get(GITHUB_LATEST_URL, timeout=15)
+        response = requests.get(GITHUB_LATEST_URL, timeout=12)
         response.raise_for_status()
-        latest_code = response.text
+        latest_code = response.text.strip()
 
-   
+
         local_code = ""
         if os.path.exists("tush.py"):
             try:
                 with open("tush.py", "r", encoding="utf-8") as f:
-                    local_code = f.read()
+                    local_code = f.read().strip()
             except:
                 pass
 
-        if hashlib.md5(local_code.encode('utf-8')).hexdigest() == hashlib.md5(latest_code.encode('utf-8')).hexdigest():
-            return  
+        if hashlib.md5(local_code.encode()).hexdigest() == hashlib.md5(latest_code.encode()).hexdigest():
+            return 
 
 
         with open("tush_new.py", "w", encoding="utf-8") as f:
             f.write(latest_code)
 
-   
-        with open("tush_updater.bat", "w", encoding="utf-8") as f:
+
+        with open("update.bat", "w", encoding="utf-8") as f:
             f.write('@echo off\n')
-            f.write('title Tush Macro - Actualizacion Automatica\n')
+            f.write('title Tush Macro - Actualización\n')
             f.write('echo ===============================================\n')
             f.write('echo     Actualizando Tush Macro...\n')
             f.write('echo ===============================================\n')
             f.write('echo.\n')
-            f.write('echo Reemplazando codigo fuente...\n')
+            f.write('echo Reemplazando el código fuente...\n')
             f.write('move /y "tush_new.py" "tush.py" >nul 2>&1\n')
             f.write('echo.\n')
-            f.write('echo Actualizacion completada correctamente.\n')
+            f.write('echo Actualización completada correctamente.\n')
             f.write('echo.\n')
             f.write('echo Presiona alguna tecla para cerrar el cmd y poder usar la macro...\n')
             f.write('pause >nul\n')
             f.write(f'start "" "{EXE_NAME}"\n')
-            f.write('del "tush_updater.bat" >nul 2>&1\n')
+            f.write('del "update.bat" >nul 2>&1\n')
             f.write('exit\n')
 
-        # Ejecutar updater
-        subprocess.Popen(['cmd', '/c', 'tush_updater.bat'], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        subprocess.Popen(['cmd', '/c', 'update.bat'], creationflags=subprocess.CREATE_NEW_CONSOLE)
         sys.exit(0)
 
     except Exception as e:
         print(f"Error en actualización: {e}")
+
 
 
 def load_licenses():
@@ -146,13 +146,13 @@ def notify_license_request(license_key, hwid):
     except:
         pass
 
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
 
 
     auto_update()
-
 
     license_file = "license.key"
 
@@ -191,7 +191,6 @@ if __name__ == "__main__":
                 os.remove(license_file)
             sys.exit(1)
 
-
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
     def get_window_title():
@@ -216,6 +215,7 @@ if __name__ == "__main__":
                     pass
 
     threading.Thread(target=lambda: [set_roblox_high_priority() or time.sleep(5) for _ in iter(int,1)], daemon=True).start()
+
 
     class Macro:
         def __init__(self):
