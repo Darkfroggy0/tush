@@ -3,9 +3,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-# =========================
-# CONFIGURACIÓN
-# =========================
+
 DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1490952754674532483/VF5gThbKFvEKlPP2Mm5pec6iUuyFyl4XdlKFnFM7gTP6vpqzQa62dPBBhS42l4S4ShY_"
 
 GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/HWID%20Baneados"
@@ -14,9 +12,6 @@ GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/hea
 
 CURRENT_VERSION = "v2.8"
 
-# =========================
-# GENERAR HWID
-# =========================
 def get_hwid():
     try:
         output = subprocess.check_output('wmic csproduct get uuid', shell=True, text=True, stderr=subprocess.DEVNULL)
@@ -34,9 +29,7 @@ def get_hwid():
 
 HWID = get_hwid()
 
-# =========================
-# CARGAR BANEADOS
-# =========================
+
 def load_banned_hwids():
     try:
         r = requests.get(GITHUB_BAN_URL, timeout=8)
@@ -56,23 +49,18 @@ if HWID in BANNED_HWIDS:
         "https://guns.lol/2by")
     sys.exit(1)
 
-# =========================
-# ACTUALIZACIÓN AUTOMÁTICA AL INICIO (Sin preguntar)
-# =========================
 def auto_update():
     try:
         response = requests.get(GITHUB_LATEST_URL, timeout=12)
         response.raise_for_status()
         latest_code = response.text
 
-        # Comparar versión actual con la del GitHub
         with open(__file__, "r", encoding="utf-8") as f:
             local_code = f.read()
 
         if hashlib.md5(local_code.encode('utf-8')).hexdigest() == hashlib.md5(latest_code.encode('utf-8')).hexdigest():
-            return  # No hay actualización
+            return  
 
-        # Hay actualización → Proceder automáticamente
         updater_script = "tush_updater.bat"
         with open(updater_script, "w", encoding="utf-8") as f:
             f.write('@echo off\n')
@@ -94,20 +82,18 @@ def auto_update():
             f.write('del "%~f0"\n')
             f.write('exit\n')
 
-        # Guardar la nueva versión
+   
         with open("tush_new.py", "w", encoding="utf-8") as f:
             f.write(latest_code)
 
-        # Ejecutar el actualizador en una ventana CMD visible
+   
         subprocess.Popen(['cmd', '/c', updater_script], creationflags=subprocess.CREATE_NEW_CONSOLE)
-        sys.exit(0)   # Cerrar el programa actual
+        sys.exit(0)   
 
     except Exception as e:
-        print(f"Error en auto-update: {e}")  # Solo para debug
+        print(f"Error en auto-update: {e}")  
 
-# =========================
-# CARGAR LICENCIAS
-# =========================
+
 def load_licenses():
     try:
         r = requests.get(GITHUB_LICENSE_URL, timeout=8)
@@ -122,9 +108,7 @@ def load_licenses():
     except:
         return {}
 
-# =========================
-# NOTIFICACIÓN DE LICENCIA
-# =========================
+
 def notify_license_request(license_key, hwid):
     notified_file = "notified_licenses.txt"
     entry = f"{license_key}|{hwid}"
@@ -158,19 +142,16 @@ def notify_license_request(license_key, hwid):
     except:
         pass
 
-# =========================
-# MAIN
-# =========================
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
 
-    # === ACTUALIZACIÓN AUTOMÁTICA AL INICIO ===
+
     auto_update()
 
-    # =========================
-    # SISTEMA DE LICENCIA
-    # =========================
+
     license_file = "license.key"
 
     if not os.path.exists(license_file):
@@ -209,9 +190,7 @@ if __name__ == "__main__":
                 os.remove(license_file)
             sys.exit(1)
 
-    # =========================
-    # WINDOWS API + MACRO + UI
-    # =========================
+
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
     def get_window_title():
