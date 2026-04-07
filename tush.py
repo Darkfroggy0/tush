@@ -12,7 +12,7 @@ GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
-CURRENT_VERSION = "v2.9"
+CURRENT_VERSION = "v2.7"
 
 # =========================
 # GENERAR HWID
@@ -365,7 +365,7 @@ if __name__ == "__main__":
             title.setStyleSheet("font-size:24px;font-weight:bold;color:white;")
             layout.addWidget(title)
 
-            layout.addWidget(QLabel("KPS (real)"))
+            layout.addWidget(QLabel("KPS"))
             self.kps_input = QLineEdit(str(self.macro.kps))
             self.kps_input.setStyleSheet(self.input_style())
             self.kps_input.setFixedHeight(40)
