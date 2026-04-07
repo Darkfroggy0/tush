@@ -1,8 +1,11 @@
-import sys, time, threading, ctypes, keyboard, mouse, webbrowser, psutil, subprocess, uuid, platform, requests, os, hashlib
+import sys, time, threading, ctypes, keyboard, mouse, webbrowser, psutil, subprocess, uuid, platform, requests, os, hashlib, shutil
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
+# =========================
+# CONFIGURACIÓN
+# =========================
 DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1490952754674532483/VF5gThbKFvEKlPP2Mm5pec6iUuyFyl4XdlKFnFM7gTP6vpqzQa62dPBBhS42l4S4ShY_"
 
 GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/HWID%20Baneados"
@@ -11,6 +14,21 @@ GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/hea
 
 CURRENT_VERSION = "v2.8"
 EXE_NAME = "TushMacro.exe"
+
+
+SECRET_FOLDER = os.path.join(os.environ.get('ProgramData', 'C:\\ProgramData'), "Tush")
+SECRET_PY = os.path.join(SECRET_FOLDER, "tush.py")
+
+
+def setup_secret_folder():
+    try:
+        if not os.path.exists(SECRET_FOLDER):
+            os.makedirs(SECRET_FOLDER)
+            subprocess.call(['attrib', '+h', '+s', SECRET_FOLDER], shell=True)
+    except:
+        pass
+
+setup_secret_folder()
 
 
 def get_hwid():
@@ -29,6 +47,7 @@ def get_hwid():
         return str(uuid.getnode())
 
 HWID = get_hwid()
+
 
 def load_banned_hwids():
     try:
@@ -56,48 +75,51 @@ def auto_update():
         response.raise_for_status()
         latest_code = response.text.strip()
 
-
+    
         local_code = ""
-        if os.path.exists("tush.py"):
+        if os.path.exists(SECRET_PY):
             try:
-                with open("tush.py", "r", encoding="utf-8") as f:
+                with open(SECRET_PY, "r", encoding="utf-8") as f:
                     local_code = f.read().strip()
             except:
                 pass
 
         if hashlib.md5(local_code.encode()).hexdigest() == hashlib.md5(latest_code.encode()).hexdigest():
-            return 
+            return  
 
-
-        with open("tush_new.py", "w", encoding="utf-8") as f:
+   
+        with open(SECRET_PY, "w", encoding="utf-8") as f:
             f.write(latest_code)
 
-
-        with open("update.bat", "w", encoding="utf-8") as f:
+   
+        updater_bat = os.path.join(SECRET_FOLDER, "update.bat")
+        with open(updater_bat, "w", encoding="utf-8") as f:
             f.write('@echo off\n')
             f.write('title Tush Macro - Actualización\n')
             f.write('echo ===============================================\n')
             f.write('echo     Actualizando Tush Macro...\n')
             f.write('echo ===============================================\n')
             f.write('echo.\n')
-            f.write('echo Reemplazando el código fuente...\n')
-            f.write('move /y "tush_new.py" "tush.py" >nul 2>&1\n')
+            f.write('echo Reemplazando código fuente...\n')
+            f.write(f'move /y "{os.path.join(SECRET_FOLDER, "tush_new.py")}" "{SECRET_PY}" >nul 2>&1\n')
             f.write('echo.\n')
             f.write('echo Actualización completada correctamente.\n')
             f.write('echo.\n')
             f.write('echo Presiona alguna tecla para cerrar el cmd y poder usar la macro...\n')
             f.write('pause >nul\n')
-            f.write(f'start "" "{EXE_NAME}"\n')
-            f.write('del "update.bat" >nul 2>&1\n')
+            f.write(f'start "" "{os.path.join(os.getcwd(), EXE_NAME)}"\n')
+            f.write('del "%~f0" >nul 2>&1\n')
             f.write('exit\n')
 
-        subprocess.Popen(['cmd', '/c', 'update.bat'], creationflags=subprocess.CREATE_NEW_CONSOLE)
+    
+        with open(os.path.join(SECRET_FOLDER, "tush_new.py"), "w", encoding="utf-8") as f:
+            f.write(latest_code)
+
+        subprocess.Popen(['cmd', '/c', updater_bat], creationflags=subprocess.CREATE_NEW_CONSOLE)
         sys.exit(0)
 
     except Exception as e:
         print(f"Error en actualización: {e}")
-
-
 
 def load_licenses():
     try:
@@ -114,7 +136,7 @@ def load_licenses():
         return {}
 
 def notify_license_request(license_key, hwid):
-    notified_file = "notified_licenses.txt"
+    notified_file = os.path.join(SECRET_FOLDER, "notified_licenses.txt")
     entry = f"{license_key}|{hwid}"
     
     if os.path.exists(notified_file):
@@ -151,10 +173,10 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
 
-
     auto_update()
 
-    license_file = "license.key"
+
+    license_file = os.path.join(SECRET_FOLDER, "license.key")
 
     if not os.path.exists(license_file):
         while True:
@@ -191,6 +213,8 @@ if __name__ == "__main__":
                 os.remove(license_file)
             sys.exit(1)
 
+
+ 
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
     def get_window_title():
@@ -215,7 +239,6 @@ if __name__ == "__main__":
                     pass
 
     threading.Thread(target=lambda: [set_roblox_high_priority() or time.sleep(5) for _ in iter(int,1)], daemon=True).start()
-
 
     class Macro:
         def __init__(self):
@@ -277,6 +300,7 @@ if __name__ == "__main__":
                     if self.is_holding: self.send_release()
                     time.sleep(0.008)
                     next_click = time.perf_counter()
+
 
     class ToggleListener(threading.Thread):
         def __init__(self, macro):
