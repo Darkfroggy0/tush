@@ -3,9 +3,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-# =========================
-# CONFIGURACIÓN
-# =========================
+
 DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1490952754674532483/VF5gThbKFvEKlPP2Mm5pec6iUuyFyl4XdlKFnFM7gTP6vpqzQa62dPBBhS42l4S4ShY_"
 
 GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/HWID%20Baneados"
