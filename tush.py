@@ -12,7 +12,7 @@ GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
-CURRENT_VERSION = "v2.9 - Actualización Mejorada"
+CURRENT_VERSION = "v2.9"
 
 # =========================
 # GENERAR HWID
