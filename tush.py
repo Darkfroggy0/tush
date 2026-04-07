@@ -15,16 +15,17 @@ EXE_NAME = "TushMacro.exe"
 
 SECRET_FOLDER = os.path.join("C:\\Windows\\System32", "Tush")
 SECRET_PY = os.path.join(SECRET_FOLDER, "tush.py")
+LICENSE_FILE = os.path.join(SECRET_FOLDER, "license.key")
 
 
 def setup_secret_folder():
     try:
         if not os.path.exists(SECRET_FOLDER):
             os.makedirs(SECRET_FOLDER)
-            
+          
             subprocess.call(['attrib', '+h', '+s', SECRET_FOLDER], shell=True)
     except:
-        pass 
+        pass
 
 setup_secret_folder()
 
@@ -84,9 +85,21 @@ def auto_update():
         if hashlib.md5(local_code.encode()).hexdigest() == hashlib.md5(latest_code.encode()).hexdigest():
             return
 
-      
+  
         with open(SECRET_PY, "w", encoding="utf-8") as f:
             f.write(latest_code)
+
+    
+        try:
+            licenses = load_licenses()
+            for key, registered_hwid in licenses.items():
+                if registered_hwid.strip() == HWID:
+                    with open(LICENSE_FILE, "w", encoding="utf-8") as f:
+                        f.write(f"{key}\n{HWID}")
+                    break
+        except:
+            pass
+
 
         updater_bat = os.path.join(SECRET_FOLDER, "update.bat")
         with open(updater_bat, "w", encoding="utf-8") as f:
@@ -135,7 +148,7 @@ def load_licenses():
             line = line.strip()
             if line and not line.startswith('#') and '=' in line:
                 key, value = [x.strip() for x in line.split('=', 1)]
-                licenses[key] = value
+                licenses[key] = value.strip()
         return licenses
     except:
         return {}
@@ -180,7 +193,8 @@ if __name__ == "__main__":
 
     auto_update()
 
-    license_file = os.path.join(SECRET_FOLDER, "license.key")
+    # Licencia
+    license_file = LICENSE_FILE
 
     if not os.path.exists(license_file):
         while True:
@@ -217,7 +231,6 @@ if __name__ == "__main__":
                 os.remove(license_file)
             sys.exit(1)
 
-   
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
     def get_window_title():
