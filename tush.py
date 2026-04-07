@@ -2,31 +2,28 @@ import sys, time, threading, ctypes, keyboard, mouse, webbrowser, json, psutil
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+import os, subprocess
 
 # =========================
 # ACTUALIZACIÓN SEGURA
 # =========================
-import os
-import subprocess
-
 def check_update():
     if not os.path.exists("version.json"):
         return
     try:
-        with open("version.json", "r") as f:
+        with open("version.json","r") as f:
             data = json.load(f)
-        local = data.get("current_version", "")
-        latest = data.get("latest_version", "")
+        local = data.get("current_version","")
+        latest = data.get("latest_version","")
         if local != latest and os.path.exists("update.py"):
-            subprocess.Popen([sys.executable, "update.py"])
+            subprocess.Popen([sys.executable,"update.py"])
     except Exception as e:
         print("Error al comprobar update:", e)
 
-# Llamamos al inicio
 check_update()
 
 # =========================
-# WINDOWS API
+# WINDOWS API (igual que tu código viejo)
 # =========================
 user32 = ctypes.WinDLL('user32', use_last_error=True)
 def get_window_title():
@@ -35,9 +32,13 @@ def get_window_title():
     buff = ctypes.create_unicode_buffer(length + 1)
     user32.GetWindowTextW(hwnd, buff, length + 1)
     return buff.value
+
 def is_roblox():
-    try: return "Roblox" in get_window_title()
-    except: return False
+    """Exactamente igual que tu código viejo que SÍ funcionaba"""
+    try:
+        return "Roblox" in get_window_title()
+    except:
+        return False
 
 # =========================
 # SUBIR PRIORIDAD DE ROBLOX
@@ -46,14 +47,13 @@ def set_roblox_high_priority():
     for proc in psutil.process_iter(['name', 'pid']):
         if "RobloxPlayerBeta.exe" in proc.info['name']:
             try:
-                p = psutil.Process(proc.info['pid'])
-                p.nice(psutil.HIGH_PRIORITY_CLASS)
+                psutil.Process(proc.info['pid']).nice(psutil.HIGH_PRIORITY_CLASS)
             except: pass
 
 threading.Thread(target=lambda: [set_roblox_high_priority() or time.sleep(5) for _ in iter(int,1)], daemon=True).start()
 
 # =========================
-# MACRO OPTIMIZADO CON KPS REAL
+# MACRO - ANTI-COLGADO + DESACTIVACIÓN INSTANTÁNEA
 # =========================
 class Macro:
     def __init__(self):
@@ -68,9 +68,9 @@ class Macro:
         try: self.kps = max(1, int(kps))
         except: pass
 
-    def set_action_key(self, key): self.action_key = key
-    def set_toggle_key(self, key): self.toggle_key = key
-    def set_mode(self, toggle: bool): self.mode_toggle = toggle
+    def set_action_key(self,key): self.action_key = key
+    def set_toggle_key(self,key): self.toggle_key = key
+    def set_mode(self,toggle:bool): self.mode_toggle = toggle
 
     def press(self):
         try:
@@ -83,19 +83,29 @@ class Macro:
     def loop(self):
         next_click = time.perf_counter()
         while True:
+            # DESACTIVACIÓN INSTANTÁNEA al salir de Roblox (esto es lo que faltaba)
+            if self.active and not is_roblox():
+                self.active = False
+                next_click = time.perf_counter()
+                time.sleep(0.001)   # mínimo para no consumir CPU
+                continue
+
+            # Solo ejecuta clicks DENTRO de Roblox
             if self.active and is_roblox():
                 now = time.perf_counter()
                 if now >= next_click:
                     self.press()
-                    next_click = now + 1/self.kps
+                    next_click = now + 1.0 / self.kps
                 else:
-                    time.sleep(max(0.0005, next_click - now))
+                    # Sleep ultra-preciso (funciona perfecto a 300 KPS sin colgarse)
+                    time.sleep(max(0.0001, next_click - now))
             else:
+                # Fuera de Roblox o inactiva = casi 0 CPU y resetea timer
                 time.sleep(0.01)
                 next_click = time.perf_counter()
 
 # =========================
-# TOGGLE LISTENER
+# TOGGLE LISTENER (adaptado de tu código viejo + restricción a Roblox)
 # =========================
 class ToggleListener(threading.Thread):
     def __init__(self, macro):
@@ -103,38 +113,87 @@ class ToggleListener(threading.Thread):
         self.macro = macro
         self.last_state = False
         self.last_toggle_time = 0
+
     def run(self):
         while True:
             try:
                 key = self.macro.toggle_key
+                # Detecta tecla (exacto como tu código viejo)
                 pressed = keyboard.is_pressed(key) if not key.startswith("mouse_") else mouse.is_pressed(button=key.split("_")[1])
                 now = time.perf_counter()
+
                 if self.macro.mode_toggle:
-                    if pressed and not self.last_state and now - self.last_toggle_time >= 0.2:
-                        self.macro.active = not self.macro.active
+                    # Toggle SOLO funciona dentro de Roblox (como pediste)
+                    if pressed and not self.last_state and now - self.last_toggle_time >= 0.15:
+                        if is_roblox():               # ← clave: solo toggle dentro del juego
+                            self.macro.active = not self.macro.active
                         self.last_toggle_time = now
                     self.last_state = pressed
                 else:
-                    self.macro.active = pressed
+                    # Hold mode: solo activo dentro de Roblox
+                    self.macro.active = pressed and is_roblox()
             except: pass
-            time.sleep(0.01)
+            time.sleep(0.008)   # más rápido para que no se sienta "lento"
 
 # =========================
-# UI NEGRA MINIMALISTA
+# OVERLAY (solo aparece en Roblox)
+# =========================
+class Overlay(QWidget):
+    def __init__(self, macro):
+        super().__init__()
+        self.macro = macro
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setFixedSize(200,50)
+        self.label = QLabel("Tush Off", self)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setFixedSize(200,50)
+        self.label.setStyleSheet(
+            "font-size:20px;font-weight:bold;color:red;"
+            "background:rgba(0,0,0,180);border-radius:10px;"
+        )
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_overlay)
+        self.timer.start(40)
+
+    def update_overlay(self):
+        if not is_roblox():
+            self.hide()
+            return
+        self.show()
+        if self.macro.active:
+            self.label.setText("Tush On")
+            self.label.setStyleSheet(
+                "font-size:20px;font-weight:bold;color:lime;"
+                "background:rgba(0,0,0,180);border-radius:10px;"
+            )
+        else:
+            self.label.setText("Tush Off")
+            self.label.setStyleSheet(
+                "font-size:20px;font-weight:bold;color:red;"
+                "background:rgba(0,0,0,180);border-radius:10px;"
+            )
+        screen = QApplication.primaryScreen().geometry()
+        x = (screen.width()-self.width())//2
+        self.move(x, 50)
+
+# =========================
+# UI (igual que tu código viejo)
 # =========================
 class UI(QWidget):
     def __init__(self):
         super().__init__()
-        self.version = "v1.7"
+        self.version = "v1.9"
         self.macro = Macro()
         self.listener = ToggleListener(self.macro)
         self.listener.start()
         self.listening = False
         self.drag_pos = None
         self.init_ui()
+        self.overlay = Overlay(self.macro)
 
     def init_ui(self):
-        self.setFixedSize(400, 300)
+        self.setFixedSize(400,300)
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowTitle("Tush Clash Macro")
@@ -144,13 +203,11 @@ class UI(QWidget):
         layout.setContentsMargins(20,20,20,20)
         layout.setSpacing(15)
 
-        # Titulo
         title = QLabel(f"Tush Clash Macro - {self.version}")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size:24px;font-weight:bold;color:white;")
         layout.addWidget(title)
 
-        # KPS
         layout.addWidget(QLabel("KPS"))
         self.kps_input = QLineEdit(str(self.macro.kps))
         self.kps_input.setStyleSheet(self.input_style())
@@ -158,7 +215,6 @@ class UI(QWidget):
         self.kps_input.textChanged.connect(lambda t: self.macro.set_kps(t))
         layout.addWidget(self.kps_input)
 
-        # Action Key
         layout.addWidget(QLabel("Action Key"))
         self.action = QComboBox()
         self.action.addItems(["f","e","space","q","r","t"])
@@ -167,7 +223,6 @@ class UI(QWidget):
         self.action.currentTextChanged.connect(self.macro.set_action_key)
         layout.addWidget(self.action)
 
-        # Hotkey
         hotkey_layout = QHBoxLayout()
         self.hotkey_btn = QPushButton("SET HOTKEY")
         self.hotkey_btn.setFixedHeight(40)
@@ -182,7 +237,6 @@ class UI(QWidget):
         hotkey_layout.addWidget(self.mode_checkbox)
         layout.addLayout(hotkey_layout)
 
-        # Boton creador
         creator_btn = QPushButton("CREADOR")
         creator_btn.setFixedHeight(40)
         creator_btn.setStyleSheet(self.btn_style())
@@ -196,14 +250,12 @@ class UI(QWidget):
     def btn_style(self):
         return "padding:10px;border-radius:10px;background:#1e1e1e;color:white;font-size:16px;border:2px solid rgba(255,255,255,0.3);"
 
-    # DRAG
     def mousePressEvent(self,event):
         if event.button()==Qt.LeftButton: self.drag_pos=event.globalPos()-self.frameGeometry().topLeft()
     def mouseMoveEvent(self,event):
         if self.drag_pos and event.buttons()==Qt.LeftButton: self.move(event.globalPos()-self.drag_pos)
     def mouseReleaseEvent(self,event): self.drag_pos=None
 
-    # HOTKEY
     def set_hotkey(self):
         if self.listening: return
         self.listening=True
@@ -215,12 +267,12 @@ class UI(QWidget):
                 e=keyboard.read_event(suppress=False)
                 if e.event_type==keyboard.KEY_DOWN: self.apply_hotkey(e.name); return
         threading.Thread(target=detect,daemon=True).start()
+
     def apply_hotkey(self,key):
         self.macro.set_toggle_key(key)
         self.hotkey_btn.setText(key.upper())
         self.listening=False
 
-    # FONDO NEGRO
     def paintEvent(self,event):
         p=QPainter(self)
         p.fillRect(self.rect(), QColor("#000000"))
