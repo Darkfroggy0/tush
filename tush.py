@@ -12,7 +12,7 @@ GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
-CURRENT_VERSION = "v2.7"
+CURRENT_VERSION = "v2.8"
 
 # =========================
 # GENERAR HWID
@@ -48,7 +48,7 @@ def load_banned_hwids():
 BANNED_HWIDS = load_banned_hwids()
 
 if HWID in BANNED_HWIDS:
-    QMessageBox.critical(None, "❌ ACCESO DENEGADO", 
+    QMessageBox.critical(None, "ACCESO DENEGADO", 
         "Has sido baneado.\n\n"
         "Si crees que es un error agrega al Creador de la macro:\n\n"
         ".2by_ en Discord\n\n"
