@@ -12,7 +12,7 @@ GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
-CURRENT_VERSION = "v2.8"
+CURRENT_VERSION = "v2.9 - Actualización Mejorada"
 
 # =========================
 # GENERAR HWID
@@ -60,7 +60,7 @@ def load_licenses():
         return {}
 
 # =========================
-# NOTIFICACIÓN DE LICENCIA LIBRE
+# NOTIFICACIÓN DE NUEVA SOLICITUD DE LICENCIA
 # =========================
 def notify_license_request(license_key, hwid):
     notified_file = "notified_licenses.txt"
@@ -69,23 +69,23 @@ def notify_license_request(license_key, hwid):
     if os.path.exists(notified_file):
         with open(notified_file, "r", encoding="utf-8") as f:
             if entry in f.read():
-                return  # Ya notificado
+                return
 
     try:
         data = {
             "username": "Tush License Bot",
             "content": "<@1140745091191939184>",
             "embeds": [{
-                "title": "🔑 Nueva Licencia Libre Solicitada",
+                "title": "🔑 Nueva Solicitud de Licencia",
                 "color": 0xffaa00,
                 "fields": [
                     {"name": "Licencia", "value": f"`{license_key}`", "inline": False},
-                    {"name": "HWID del Usuario", "value": f"`{hwid}`", "inline": False},
+                    {"name": "HWID", "value": f"`{hwid}`", "inline": False},
                     {"name": "PC", "value": platform.node(), "inline": True},
                     {"name": "Usuario", "value": os.getlogin(), "inline": True},
                     {"name": "Hora", "value": time.strftime("%Y-%m-%d %H:%M:%S"), "inline": True}
                 ],
-                "footer": {"text": "Agrega el HWID a esta licencia en GitHub → Linc"}
+                "footer": {"text": "Agrega el HWID en el archivo Linc de GitHub"}
             }]
         }
         requests.post(DISCORD_WEBHOOK, json=data, timeout=6)
@@ -96,7 +96,7 @@ def notify_license_request(license_key, hwid):
         pass
 
 # =========================
-# ACTUALIZACIÓN AUTOMÁTICA
+# ACTUALIZACIÓN AUTOMÁTICA (Corregida)
 # =========================
 def check_for_update():
     try:
@@ -107,20 +107,33 @@ def check_for_update():
         with open(__file__, "r", encoding="utf-8") as f:
             local_code = f.read()
 
-        if hashlib.md5(local_code.encode('utf-8')).hexdigest() != hashlib.md5(latest_code.encode('utf-8')).hexdigest():
-            if QMessageBox.question(None, "Actualización Disponible", 
-                f"Hay una nueva versión disponible.\n\n¿Quieres actualizar ahora?", 
-                QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
-                
-                with open("tush_backup.py", "w", encoding="utf-8") as f:
-                    f.write(local_code)
-                with open(__file__, "w", encoding="utf-8") as f:
-                    f.write(latest_code)
-                QMessageBox.information(None, "Actualizado", "Se actualizó el programa. Reiniciando...")
-                subprocess.Popen([sys.executable, __file__])
-                sys.exit(0)
-    except:
-        pass
+        if hashlib.md5(local_code.encode('utf-8')).hexdigest() == hashlib.md5(latest_code.encode('utf-8')).hexdigest():
+            return  # No hay actualización
+
+        reply = QMessageBox.question(None, "Actualización Disponible",
+            f"Hay una nueva versión disponible.\n\n"
+            f"Versión actual: {CURRENT_VERSION}\n"
+            f"¿Quieres actualizar ahora?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+
+        if reply == QMessageBox.Yes:
+            # Guardar backup
+            with open("tush_backup.py", "w", encoding="utf-8") as f:
+                f.write(local_code)
+
+            # Reemplazar el archivo
+            with open(__file__, "w", encoding="utf-8") as f:
+                f.write(latest_code)
+
+            QMessageBox.information(None, "Actualización Exitosa", 
+                "El programa se ha actualizado correctamente.\nSe reiniciará con la nueva versión.")
+
+            # Reiniciar correctamente (mata proceso actual)
+            subprocess.Popen([sys.executable, __file__])
+            sys.exit(0)
+
+    except Exception as e:
+        print(f"Error en actualización: {e}")
 
 # =========================
 # MAIN
@@ -149,46 +162,32 @@ if __name__ == "__main__":
                 registered_hwid = licenses[license_key]
                 
                 if registered_hwid == HWID:
-                    # Licencia ya vinculada correctamente
                     with open(license_file, "w", encoding="utf-8") as f:
                         f.write(f"{license_key}\n{HWID}")
                     QMessageBox.information(None, "Éxito", "Licencia activada correctamente.")
                     break
-                elif registered_hwid == "" or registered_hwid.lower() == "libre" or registered_hwid == "PENDIENTE":
-                    # Licencia existe pero está libre → Notificar al creador
+                elif registered_hwid == "" or registered_hwid.lower() in ["", "libre", "pendiente", "free"]:
                     notify_license_request(license_key, HWID)
                     QMessageBox.information(None, "Licencia Libre", 
-                        "Esta licencia está disponible.\nSe ha enviado una solicitud automática al creador.\n"
+                        "Esta licencia está disponible.\nSe ha enviado una solicitud al creador.\n"
                         "Espera a que la vincule con tu HWID.")
                 else:
-                    QMessageBox.critical(None, "Error", "Esta licencia ya está vinculada a otro dispositivo.\nContacta con 2by.")
+                    QMessageBox.critical(None, "Error", "Esta licencia ya está vinculada a otro HWID.\nContacta con 2by.")
             else:
-                QMessageBox.critical(None, "Error", "Esta licencia no existe.")
+                QMessageBox.critical(None, "Error", "Esta licencia no existe en el sistema.")
     else:
-        # Verificar licencia guardada
         with open(license_file, "r", encoding="utf-8") as f:
             lines = [line.strip() for line in f.readlines()]
         if len(lines) < 2 or lines[1] != HWID:
             QMessageBox.critical(None, "Error", "Esta licencia no corresponde a este dispositivo.\nContacta con 2by.")
-            os.remove(license_file)
+            if os.path.exists(license_file):
+                os.remove(license_file)
             sys.exit(1)
-
-    # Log de ejecución
-    try:
-        requests.post(DISCORD_WEBHOOK, json={
-            "username": "Tush Logger",
-            "embeds": [{"title": "Ejecución Normal", "color": 0x00ff00, "fields": [
-                {"name": "HWID", "value": f"`{HWID}`"},
-                {"name": "Versión", "value": CURRENT_VERSION}
-            ]}]
-        }, timeout=5)
-    except:
-        pass
 
     check_for_update()
 
     # =========================
-    # WINDOWS API, MACRO, LISTENER, OVERLAY, UI
+    # WINDOWS API + MACRO + UI
     # =========================
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
@@ -215,7 +214,6 @@ if __name__ == "__main__":
 
     threading.Thread(target=lambda: [set_roblox_high_priority() or time.sleep(5) for _ in iter(int,1)], daemon=True).start()
 
-    # Macro (sin cambios)
     class Macro:
         def __init__(self):
             self.action_key = "f"
