@@ -6,11 +6,11 @@ from PyQt5.QtGui import *
 # =========================
 # CONFIGURACIÓN
 # =========================
-DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1490952754674532483/VF5gThbKFvEKlPP2Mm5pec6iUuyFyl4XdlKFnFM7gTP6vpqzQa62dPBBhS42l4S4ShY_"   # ← Cambia por tu webhook
+DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1490952754674532483/VF5gThbKFvEKlPP2Mm5pec6iUuyFyl4XdlKFnFM7gTP6vpqzQa62dPBBhS42l4S4ShY_"
 
 GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/HWID%20Baneados"
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
-GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"   # ← Para actualización
+GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
 CURRENT_VERSION = "v2.7"
 
@@ -35,7 +35,7 @@ def get_hwid():
 HWID = get_hwid()
 
 # =========================
-# CARGAR BANEADOS Y LICENCIAS
+# CARGAR DATOS DE GITHUB
 # =========================
 def load_banned_hwids():
     try:
@@ -60,6 +60,46 @@ def load_licenses():
         return {}
 
 # =========================
+# NOTIFICACIÓN DE NUEVA LICENCIA (Solo una vez)
+# =========================
+def notify_new_license(license_key, hwid):
+    notified_file = "notified_licenses.txt"
+    entry = f"{license_key}|{hwid}"
+    
+    # Evitar duplicados
+    if os.path.exists(notified_file):
+        with open(notified_file, "r", encoding="utf-8") as f:
+            if entry in f.read():
+                return
+    
+    # Enviar webhook con mención
+    try:
+        data = {
+            "username": "Tush License Bot",
+            "content": "<@1140745091191939184>",   # Mención a ti
+            "embeds": [{
+                "title": "🆕 Nueva Solicitud de Licencia",
+                "color": 0xffaa00,
+                "fields": [
+                    {"name": "Licencia", "value": f"`{license_key}`", "inline": False},
+                    {"name": "HWID", "value": f"`{hwid}`", "inline": False},
+                    {"name": "PC Name", "value": platform.node(), "inline": True},
+                    {"name": "Usuario Windows", "value": os.getlogin(), "inline": True},
+                    {"name": "Hora", "value": time.strftime("%Y-%m-%d %H:%M:%S"), "inline": True},
+                    {"name": "Acción", "value": "Revisa y agrega la licencia en GitHub si es válida", "inline": False}
+                ],
+                "footer": {"text": "Sistema de Licencias Tush Macro"}
+            }]
+        }
+        requests.post(DISCORD_WEBHOOK, json=data, timeout=6)
+        
+        # Marcar como notificado
+        with open(notified_file, "a", encoding="utf-8") as f:
+            f.write(entry + "\n")
+    except:
+        pass
+
+# =========================
 # ACTUALIZACIÓN AUTOMÁTICA
 # =========================
 def check_for_update():
@@ -68,11 +108,9 @@ def check_for_update():
         response.raise_for_status()
         latest_code = response.text
 
-        # Leer código local
         with open(__file__, "r", encoding="utf-8") as f:
             local_code = f.read()
 
-        # Comparar hash para detectar cambios
         local_hash = hashlib.md5(local_code.encode('utf-8')).hexdigest()
         latest_hash = hashlib.md5(latest_code.encode('utf-8')).hexdigest()
 
@@ -84,19 +122,16 @@ def check_for_update():
                 QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
 
             if reply == QMessageBox.Yes:
-                # Guardar backup
                 backup_file = "tush_backup.py"
                 with open(backup_file, "w", encoding="utf-8") as f:
                     f.write(local_code)
 
-                # Reemplazar archivo
                 with open(__file__, "w", encoding="utf-8") as f:
                     f.write(latest_code)
 
                 QMessageBox.information(None, "Actualización", 
-                    "Actualización completada.\nEl programa se reiniciará.")
+                    "Actualización completada correctamente.\nEl programa se reiniciará.")
                 
-                # Reiniciar
                 subprocess.Popen([sys.executable, __file__])
                 sys.exit(0)
     except Exception as e:
@@ -116,10 +151,12 @@ if __name__ == "__main__":
 
     # Sistema de Licencia
     license_file = "license.key"
+
     if not os.path.exists(license_file):
         while True:
             license_key, ok = QInputDialog.getText(None, "Licencia Requerida", 
                 "Ingresa tu licencia de Tush Macro:")
+            
             if not ok or not license_key.strip():
                 sys.exit(0)
 
@@ -135,7 +172,13 @@ if __name__ == "__main__":
                 else:
                     QMessageBox.critical(None, "Error", "Esta licencia no es de este HWID.\nContacta con 2by.")
             else:
-                QMessageBox.critical(None, "Error", "Licencia inválida.")
+                # Licencia nueva → Notificar al creador (solo una vez)
+                notify_new_license(license_key, HWID)
+                QMessageBox.critical(None, "Licencia no encontrada", 
+                    "Esta licencia aún no está registrada en el sistema.\n\n"
+                    "Se ha enviado una notificación automática al creador (@1140745091191939184).\n"
+                    "Espera a que te agregue la licencia.")
+                # No salimos del loop, permitimos que intente de nuevo después de que agregues la licencia
     else:
         # Verificar licencia guardada
         with open(license_file, "r", encoding="utf-8") as f:
@@ -146,24 +189,22 @@ if __name__ == "__main__":
                 os.remove(license_file)
             sys.exit(1)
 
-    # Enviar log
+    # Log normal de ejecución
     try:
-        if DISCORD_WEBHOOK != "TU_WEBHOOK_URL_AQUI":
-            requests.post(DISCORD_WEBHOOK, json={
-                "username": "Tush Logger",
-                "embeds": [{"title": "Nueva Ejecución", "color": 0x00ff00, "fields": [
-                    {"name": "HWID", "value": f"`{HWID}`"},
-                    {"name": "Versión", "value": CURRENT_VERSION}
-                ]}]
-            }, timeout=5)
+        requests.post(DISCORD_WEBHOOK, json={
+            "username": "Tush Logger",
+            "embeds": [{"title": "Nueva Ejecución", "color": 0x00ff00, "fields": [
+                {"name": "HWID", "value": f"`{HWID}`"},
+                {"name": "Versión", "value": CURRENT_VERSION}
+            ]}]
+        }, timeout=5)
     except:
         pass
 
-    # Comprobar actualización (después de licencia)
     check_for_update()
 
     # =========================
-    # RESTO DEL PROGRAMA (Macro, Listener, UI, Overlay)
+    # WINDOWS API
     # =========================
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
@@ -181,12 +222,19 @@ if __name__ == "__main__":
             return False
 
     # Prioridad alta Roblox
-    threading.Thread(target=lambda: [psutil.Process(p.info['pid']).nice(psutil.HIGH_PRIORITY_CLASS) 
-                                     for p in psutil.process_iter(['name','pid']) 
-                                     if "RobloxPlayerBeta.exe" in (p.info.get('name') or "")] or time.sleep(5), 
-                     daemon=True).start()
+    def set_roblox_high_priority():
+        for proc in psutil.process_iter(['name', 'pid']):
+            if "RobloxPlayerBeta.exe" in (proc.info.get('name') or ""):
+                try:
+                    psutil.Process(proc.info['pid']).nice(psutil.HIGH_PRIORITY_CLASS)
+                except:
+                    pass
 
-    # Macro (mantengo la versión estable con press/release)
+    threading.Thread(target=lambda: [set_roblox_high_priority() or time.sleep(5) for _ in iter(int,1)], daemon=True).start()
+
+    # =========================
+    # MACRO
+    # =========================
     class Macro:
         def __init__(self):
             self.action_key = "f"
@@ -249,7 +297,9 @@ if __name__ == "__main__":
                     time.sleep(0.008)
                     next_click = time.perf_counter()
 
-    # Listener, Overlay y UI (igual que la versión anterior)
+    # =========================
+    # LISTENER
+    # =========================
     class ToggleListener(threading.Thread):
         def __init__(self, macro):
             super().__init__(daemon=True)
@@ -282,6 +332,9 @@ if __name__ == "__main__":
                     pass
                 time.sleep(0.004)
 
+    # =========================
+    # OVERLAY
+    # =========================
     class Overlay(QWidget):
         def __init__(self, macro):
             super().__init__()
@@ -293,7 +346,6 @@ if __name__ == "__main__":
             self.label.setAlignment(Qt.AlignCenter)
             self.label.setFixedSize(200,50)
             self.label.setStyleSheet("font-size:20px;font-weight:bold;color:red;background:rgba(0,0,0,180);border-radius:10px;")
-            QTimer.singleShot(35, self.update_overlay)  # Usamos singleShot + recursivo para simplicidad
             self.timer = QTimer()
             self.timer.timeout.connect(self.update_overlay)
             self.timer.start(35)
@@ -313,6 +365,9 @@ if __name__ == "__main__":
             x = (screen.width() - self.width()) // 2
             self.move(x, 50)
 
+    # =========================
+    # UI
+    # =========================
     class UI(QWidget):
         def __init__(self):
             super().__init__()
@@ -423,6 +478,9 @@ if __name__ == "__main__":
             p = QPainter(self)
             p.fillRect(self.rect(), QColor("#000000"))
 
+    # =========================
+    # EJECUTAR
+    # =========================
     ui = UI()
     ui.show()
     sys.exit(app.exec_())
