@@ -1,0 +1,2 @@
+python -c "import hashlib;print(hashlib.sha256(open('tush.py','rb').read()).hexdigest())"
+Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
