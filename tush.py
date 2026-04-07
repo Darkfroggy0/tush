@@ -12,7 +12,7 @@ GITHUB_BAN_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/Linc"
 GITHUB_LATEST_URL = "https://raw.githubusercontent.com/Darkfroggy0/tush/refs/heads/main/tush.py"
 
-CURRENT_VERSION = "v2.7"
+CURRENT_VERSION = "v2.8"
 
 # =========================
 # GENERAR HWID
@@ -35,7 +35,7 @@ def get_hwid():
 HWID = get_hwid()
 
 # =========================
-# CARGAR BANEADOS DESDE GITHUB
+# CARGAR BANEADOS
 # =========================
 def load_banned_hwids():
     try:
@@ -45,9 +45,6 @@ def load_banned_hwids():
     except:
         return set()
 
-# =========================
-# VERIFICACIÓN DE BANEADO - MENSAJE PERSONALIZADO
-# =========================
 BANNED_HWIDS = load_banned_hwids()
 
 if HWID in BANNED_HWIDS:
@@ -58,6 +55,52 @@ if HWID in BANNED_HWIDS:
         "O contáctalo por sus otras redes:\n"
         "https://guns.lol/2by")
     sys.exit(1)
+
+# =========================
+# ACTUALIZACIÓN SILENCIOSA CON CMD
+# =========================
+def silent_update():
+    try:
+        response = requests.get(GITHUB_LATEST_URL, timeout=12)
+        response.raise_for_status()
+        latest_code = response.text
+
+        with open(__file__, "r", encoding="utf-8") as f:
+            local_code = f.read()
+
+        if hashlib.md5(local_code.encode('utf-8')).hexdigest() == hashlib.md5(latest_code.encode('utf-8')).hexdigest():
+            return  # No hay actualización
+
+        # Crear script de actualización temporal
+        updater_script = "updater.bat"
+        with open(updater_script, "w", encoding="utf-8") as f:
+            f.write('@echo off\n')
+            f.write('echo ===============================================\n')
+            f.write('echo          Actualizando Tush Macro...\n')
+            f.write('echo ===============================================\n')
+            f.write('echo.\n')
+            f.write('echo Descargando nueva version...\n')
+            f.write('timeout /t 2 >nul\n')
+            f.write(f'echo Reemplazando archivo...\n')
+            f.write('move /y "%~dp0tush_new.py" "%~dp0tush.py" >nul 2>&1\n')
+            f.write('echo.\n')
+            f.write('echo Actualizacion completada.\n')
+            f.write('echo.\n')
+            f.write('echo Presiona alguna tecla para cerrar el cmd y poder usar la macro.\n')
+            f.write('pause >nul\n')
+            f.write('start "" "%~dp0TushMacro.exe"\n')
+            f.write('del "%~f0"\n')
+
+        # Guardar nueva versión temporal
+        with open("tush_new.py", "w", encoding="utf-8") as f:
+            f.write(latest_code)
+
+        # Ejecutar el updater en CMD y cerrar el programa actual
+        subprocess.Popen(['cmd', '/c', updater_script], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        sys.exit(0)
+
+    except Exception as e:
+        print(f"Error en actualización silenciosa: {e}")
 
 # =========================
 # CARGAR LICENCIAS
@@ -77,7 +120,7 @@ def load_licenses():
         return {}
 
 # =========================
-# NOTIFICACIÓN DE NUEVA SOLICITUD DE LICENCIA
+# NOTIFICACIÓN DE LICENCIA
 # =========================
 def notify_license_request(license_key, hwid):
     notified_file = "notified_licenses.txt"
@@ -113,48 +156,14 @@ def notify_license_request(license_key, hwid):
         pass
 
 # =========================
-# ACTUALIZACIÓN AUTOMÁTICA
-# =========================
-def check_for_update():
-    try:
-        response = requests.get(GITHUB_LATEST_URL, timeout=10)
-        response.raise_for_status()
-        latest_code = response.text
-
-        with open(__file__, "r", encoding="utf-8") as f:
-            local_code = f.read()
-
-        if hashlib.md5(local_code.encode('utf-8')).hexdigest() == hashlib.md5(latest_code.encode('utf-8')).hexdigest():
-            return
-
-        reply = QMessageBox.question(None, "Actualización Disponible",
-            f"Hay una nueva versión disponible.\n\n"
-            f"Versión actual: {CURRENT_VERSION}\n"
-            f"¿Quieres actualizar ahora?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-
-        if reply == QMessageBox.Yes:
-            with open("tush_backup.py", "w", encoding="utf-8") as f:
-                f.write(local_code)
-
-            with open(__file__, "w", encoding="utf-8") as f:
-                f.write(latest_code)
-
-            QMessageBox.information(None, "Actualización Exitosa", 
-                "El programa se ha actualizado correctamente.\nSe reiniciará con la nueva versión.")
-
-            subprocess.Popen([sys.executable, __file__])
-            sys.exit(0)
-
-    except Exception as e:
-        print(f"Error en actualización: {e}")
-
-# =========================
 # MAIN
 # =========================
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
+
+    # Actualización silenciosa (sin popup)
+    silent_update()
 
     license_file = "license.key"
 
@@ -194,10 +203,8 @@ if __name__ == "__main__":
                 os.remove(license_file)
             sys.exit(1)
 
-    check_for_update()
-
     # =========================
-    # WINDOWS API
+    # WINDOWS API + MACRO + UI (resto sin cambios)
     # =========================
     user32 = ctypes.WinDLL('user32', use_last_error=True)
 
@@ -224,9 +231,6 @@ if __name__ == "__main__":
 
     threading.Thread(target=lambda: [set_roblox_high_priority() or time.sleep(5) for _ in iter(int,1)], daemon=True).start()
 
-    # =========================
-    # MACRO
-    # =========================
     class Macro:
         def __init__(self):
             self.action_key = "f"
@@ -240,7 +244,6 @@ if __name__ == "__main__":
         def set_kps(self, kps):
             try: self.kps = max(1, int(kps))
             except: pass
-
         def set_action_key(self, key): self.action_key = key
         def set_toggle_key(self, key): self.toggle_key = key
         def set_mode(self, toggle: bool): self.mode_toggle = toggle
@@ -289,9 +292,6 @@ if __name__ == "__main__":
                     time.sleep(0.008)
                     next_click = time.perf_counter()
 
-    # =========================
-    # LISTENER
-    # =========================
     class ToggleListener(threading.Thread):
         def __init__(self, macro):
             super().__init__(daemon=True)
@@ -324,9 +324,6 @@ if __name__ == "__main__":
                     pass
                 time.sleep(0.004)
 
-    # =========================
-    # OVERLAY
-    # =========================
     class Overlay(QWidget):
         def __init__(self, macro):
             super().__init__()
@@ -357,9 +354,6 @@ if __name__ == "__main__":
             x = (screen.width() - self.width()) // 2
             self.move(x, 50)
 
-    # =========================
-    # UI
-    # =========================
     class UI(QWidget):
         def __init__(self):
             super().__init__()
@@ -427,20 +421,14 @@ if __name__ == "__main__":
 
         def input_style(self):
             return "padding:10px;border-radius:10px;background:#1e1e1e;color:white;font-size:16px;border:2px solid rgba(255,255,255,0.3);"
-        
         def btn_style(self):
             return "padding:10px;border-radius:10px;background:#1e1e1e;color:white;font-size:16px;border:2px solid rgba(255,255,255,0.3);"
 
         def mousePressEvent(self, event):
-            if event.button() == Qt.LeftButton: 
-                self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
-
+            if event.button() == Qt.LeftButton: self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
         def mouseMoveEvent(self, event):
-            if self.drag_pos and event.buttons() == Qt.LeftButton: 
-                self.move(event.globalPos() - self.drag_pos)
-
-        def mouseReleaseEvent(self, event): 
-            self.drag_pos = None
+            if self.drag_pos and event.buttons() == Qt.LeftButton: self.move(event.globalPos() - self.drag_pos)
+        def mouseReleaseEvent(self, event): self.drag_pos = None
 
         def set_hotkey(self):
             if self.listening: return
@@ -473,9 +461,6 @@ if __name__ == "__main__":
             p = QPainter(self)
             p.fillRect(self.rect(), QColor("#000000"))
 
-    # =========================
-    # EJECUTAR
-    # =========================
     ui = UI()
     ui.show()
     sys.exit(app.exec_())
